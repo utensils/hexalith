@@ -8,14 +8,18 @@ Hexalith (HexLogoGen) is a command-line tool that generates random, geometric lo
 
 ## Features
 
-- **Hexagonal Grid Generation**: Creates a hexagonal grid divided into a triangular grid
-- **Shape Creation**: Generates random polygon shapes made up of multiple triangles within the grid
+- **Hexagonal Grid Generation**: Creates a hexagonal grid divided into equilateral triangular cells
+- **Shape Creation**: Generates polygon shapes made up of connected triangles that grow from the center outward
+- **Equiangular Triangles**: All triangles have equal 60-degree angles for clean, balanced designs
+- **Connected Edges**: All triangles share edges with adjacent triangles for cohesive patterns
+- **Center-Out Growth**: All shapes grow from the center outward for balanced, harmonious designs
 - **Angular Style**: Default mode creates logos similar to the original hexagonal logo generator
-- **Shape Overlapping**: Allows multiple shapes to overlap with color blending at intersections
+- **Shape Overlapping**: By default, shapes overlap with color blending at intersections for richer designs
+- **Multiple Color Themes**: Choose from various color themes including Mesos (default), Google, Blues, Greens, Reds, Purples, and Rainbow
 - **SVG Output**: Generates clean, optimized SVG files
 - **PNG Output**: Supports PNG generation with transparency
 - **Deterministic Mode**: Generate the same logo consistently with the same seed or UUID
-- **Customization Options**: Customize colors, opacity, and grid density
+- **Customization Options**: Customize themes, opacity, and grid density
 
 ## Installation
 
@@ -42,11 +46,11 @@ Arguments:
 Options:
   -s, --seed <SEED>            Seed for deterministic generation
   -u, --uuid <UUID>            UUID for deterministic generation (overrides seed)
-  -c, --colors <COLORS>        Color scheme [default: default]
+  -t, --theme <THEME>          Color theme [default: mesos] [possible values: mesos, google, blues, greens, reds, purples, rainbow]
   -n, --shapes <SHAPES>        Number of shapes to generate [default: 3]
   -g, --grid-size <GRID_SIZE>  Grid density (2-8) [default: 2]
   -o, --opacity <OPACITY>      Shape opacity [default: 0.8]
-  --overlap                  Allow shapes to overlap with blended colors
+  --overlap                  Allow shapes to overlap with blended colors [default: true]
   -w, --width <WIDTH>          Output width in pixels (PNG only) [default: 512]
   -H, --height <HEIGHT>        Output height in pixels (PNG only) [default: 512]
   -f, --format <FORMAT>        Output format [default: svg] [possible values: svg, png]
@@ -77,9 +81,22 @@ Generate a logo with custom parameters:
 hexlogogen --grid-size 8 --shapes 5 --opacity 0.7 --verbose logo.svg
 ```
 
-Generate a logo with overlapping shapes and color blending:
+Generate a logo with a specific color theme:
 ```bash
-hexlogogen --overlap --seed 42 logo.svg
+hexlogogen --theme blues --seed 42 logo.svg
+```
+
+Generate a logo without overlapping shapes:
+```bash
+hexlogogen --no-overlap --seed 42 logo.svg
+```
+
+Try different color themes:
+```bash
+hexlogogen --theme google logo_google.svg
+hexlogogen --theme rainbow logo_rainbow.svg
+hexlogogen --theme greens logo_green.svg
+hexlogogen --theme purples logo_purple.svg
 ```
 
 Use a UUID for deterministic generation:

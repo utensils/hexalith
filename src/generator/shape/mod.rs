@@ -51,7 +51,8 @@ impl<'a> ShapeGenerator<'a> {
         Self { grid, rng }
     }
 
-    /// Generates a more angular shape, similar to the original hexagonal logo generator
+    /// Generates a more angular shape with equiangular triangles and connecting edges
+    /// that grows from the center outward
     pub fn generate_angular_shape(
         &mut self,
         color: String,
@@ -65,100 +66,92 @@ impl<'a> ShapeGenerator<'a> {
             return shape;
         }
         
-        // Choose a starting cell closer to the center
+        // Choose a starting cell at the very center
         let center_cells = self.find_center_cells();
-        let start_cell = center_cells[self.rng.gen_range(0..center_cells.len())];
+        let start_cell = center_cells[0]; // Always start with the most central cell
         shape.add_cell(start_cell);
         
         // Maximum attempts to reach target size
         let max_attempts = target_size * 3;
         let mut attempts = 0;
         
-        // Keep track of adjacent cells we've considered
-        let mut frontier = self.grid.adjacent_cells(start_cell);
+        // Use a modified breadth-first growth approach that creates angular patterns
+        // while maintaining connectivity and growing from center out
+        let mut current_layer = vec![start_cell];
+        let mut next_layer = Vec::new();
         
-        // For angular shapes, prefer to grow in specific directions rather than randomly
-        while shape.cell_count() < target_size && !frontier.is_empty() && attempts < max_attempts {
+        // Keep a frontier of cells to consider in the current layer
+        let mut frontier = Vec::new();
+        
+        // Keep adding cells until we reach the target size
+        while shape.cell_count() < target_size && attempts < max_attempts {
             attempts += 1;
+            
+            // If frontier is empty, refill it from current layer
+            if frontier.is_empty() {
+                if current_layer.is_empty() {
+                    // Move to next layer if current is empty
+                    current_layer = next_layer;
+                    next_layer = Vec::new();
+                    
+                    // If both layers are empty, we can't grow any further
+                    if current_layer.is_empty() {
+                        break;
+                    }
+                }
+                
+                // Get a cell from current layer and find its adjacent cells
+                let cell = current_layer.remove(0);
+                
+                // Find all adjacent cells that aren't already in the shape
+                for adj_id in self.grid.adjacent_cells(cell) {
+                    if !shape.contains_cell(adj_id) && !frontier.contains(&adj_id) {
+                        frontier.push(adj_id);
+                    }
+                }
+                
+                // If no adjacent cells available, continue to next cell in layer
+                if frontier.is_empty() {
+                    continue;
+                }
+            }
             
             // Choose a cell from the frontier
             let idx = self.rng.gen_range(0..frontier.len());
             let next_cell = frontier.remove(idx);
             
             // Add the cell to the shape
-            if !shape.contains_cell(next_cell) {
-                shape.add_cell(next_cell);
-                
-                // Add its adjacent cells to the frontier if they're not already in the shape
-                for adj_id in self.grid.adjacent_cells(next_cell) {
-                    if !shape.contains_cell(adj_id) && !frontier.contains(&adj_id) {
-                        frontier.push(adj_id);
-                    }
-                }
-                
-                // For angular shapes, periodically skip cells to create more angles
-                if self.rng.gen::<f32>() < 0.2 && !frontier.is_empty() {
-                    let skip_idx = self.rng.gen_range(0..frontier.len());
-                    frontier.remove(skip_idx);
-                }
+            shape.add_cell(next_cell);
+            
+            // Add it to the next layer for future expansion
+            next_layer.push(next_cell);
+            
+            // For angular shapes, periodically skip cells to create more angles
+            // but ensure we maintain connectivity by not skipping too many
+            if self.rng.gen::<f32>() < 0.3 && frontier.len() > 1 {
+                let skip_idx = self.rng.gen_range(0..frontier.len());
+                frontier.remove(skip_idx);
             }
         }
         
         shape
     }
     
-    /// Generates a random shape starting from a random cell
+    /// Generates a shape with connected edges that grows from the center outward
+    /// This replaces the previous random shape generation to ensure all shapes grow from center
     pub fn generate_random_shape(
         &mut self,
         color: String,
         opacity: f32,
         target_size: usize,
     ) -> Shape {
-        let mut shape = Shape::new(color, opacity);
-        let total_cells = self.grid.cell_count();
-
-        if total_cells == 0 || target_size == 0 {
-            return shape;
-        }
-
-        // Choose a random starting cell
-        let start_cell = self.rng.gen_range(0..total_cells);
-        shape.add_cell(start_cell);
-
-        // Maximum attempts to reach target size
-        let max_attempts = target_size * 3;
-        let mut attempts = 0;
-
-        // Keep adding adjacent cells until we reach the target size or run out of options
-        while shape.cell_count() < target_size && attempts < max_attempts {
-            attempts += 1;
-
-            // Find all adjacent cells that aren't already in the shape
-            let mut candidates = Vec::new();
-
-            for &cell_id in &shape.cells {
-                let adjacent = self.grid.adjacent_cells(cell_id);
-                for adj_id in adjacent {
-                    if !shape.contains_cell(adj_id) {
-                        candidates.push(adj_id);
-                    }
-                }
-            }
-
-            // No more candidates, break
-            if candidates.is_empty() {
-                break;
-            }
-
-            // Choose a random adjacent cell
-            let next_cell = candidates[self.rng.gen_range(0..candidates.len())];
-            shape.add_cell(next_cell);
-        }
-
-        shape
+        // Instead of truly random starting point, always start from center
+        // and use the center_shape generation algorithm which ensures center-outward growth
+        // This is intentional to meet the requirement that all shapes grow from center out
+        return self.generate_center_shape(color, opacity, target_size);
     }
 
-    /// Generates multiple random shapes
+    /// Generates multiple shapes that grow from the center out with connecting edges
     pub fn generate_shapes(
         &mut self,
         colors: Vec<String>,
@@ -171,7 +164,7 @@ impl<'a> ShapeGenerator<'a> {
         // Track which cells are already used
         let mut used_cells = HashSet::new();
 
-        // Generate the first shape - start from the center
+        // Generate the first shape - always start from the center
         if count > 0 {
             // Choose a color
             let color_idx = self.rng.gen_range(0..colors.len());
@@ -193,7 +186,7 @@ impl<'a> ShapeGenerator<'a> {
             shapes.push(first_shape);
         }
 
-        // Generate remaining shapes, ensuring they connect to existing ones
+        // Generate remaining shapes, ensuring they connect to existing ones and grow outward
         for _i in 1..count {
             // Choose a color
             let color_idx = self.rng.gen_range(0..colors.len());
@@ -204,7 +197,7 @@ impl<'a> ShapeGenerator<'a> {
             let max_size = size_range.1;
             let size = self.rng.gen_range(min_size..=max_size);
 
-            // Generate a shape connected to existing shapes
+            // Generate a shape that connects to existing shapes and grows outward
             let shape = self.generate_connected_shape(color, opacity, size, &used_cells);
 
             // Add the shape's cells to used_cells
@@ -218,8 +211,8 @@ impl<'a> ShapeGenerator<'a> {
         shapes
     }
 
-    /// Generates a shape starting from the center of the hexagon
-    /// This ensures shapes are connected and not floating isolated
+    /// Generates a shape starting from the center of the hexagon and growing outward
+    /// This ensures shapes are connected, not floating isolated, and grow from the center out
     fn generate_center_shape(
         &mut self,
         color: String,
@@ -239,44 +232,58 @@ impl<'a> ShapeGenerator<'a> {
             return shape;
         }
 
-        // Start with one of the center cells
-        let start_cell = center_cells[self.rng.gen_range(0..center_cells.len())];
+        // Always start with the most central cell
+        let start_cell = center_cells[0]; // The first cell is the closest to center
         shape.add_cell(start_cell);
 
         // Maximum attempts to reach target size
         let max_attempts = target_size * 3;
         let mut attempts = 0;
-
-        // Keep adding adjacent cells until we reach the target size or run out of options
+        
+        // Use a layered growth approach to ensure growing from center outward
+        let mut current_layer = vec![start_cell];
+        let mut next_layer = Vec::new();
+        
+        // Keep adding adjacent cells in layers until we reach the target size
         while shape.cell_count() < target_size && attempts < max_attempts {
             attempts += 1;
-
+            
+            // If current layer is empty, move to next layer
+            if current_layer.is_empty() {
+                current_layer = next_layer;
+                next_layer = Vec::new();
+                
+                // If both layers are empty, we can't grow any further
+                if current_layer.is_empty() {
+                    break;
+                }
+            }
+            
+            // Take a cell from the current layer
+            let current_cell = current_layer.remove(0);
+            
             // Find all adjacent cells that aren't already in the shape
-            let mut candidates = Vec::new();
-
-            for &cell_id in &shape.cells {
-                let adjacent = self.grid.adjacent_cells(cell_id);
-                for adj_id in adjacent {
-                    if !shape.contains_cell(adj_id) {
-                        candidates.push(adj_id);
+            let adjacent = self.grid.adjacent_cells(current_cell);
+            
+            for adj_id in adjacent {
+                if !shape.contains_cell(adj_id) {
+                    // Add this cell to the shape
+                    shape.add_cell(adj_id);
+                    // Add it to the next layer for expansion
+                    next_layer.push(adj_id);
+                    
+                    // If we've reached the target size, stop
+                    if shape.cell_count() >= target_size {
+                        break;
                     }
                 }
             }
-
-            // No more candidates, break
-            if candidates.is_empty() {
-                break;
-            }
-
-            // Choose a random adjacent cell
-            let next_cell = candidates[self.rng.gen_range(0..candidates.len())];
-            shape.add_cell(next_cell);
         }
 
         shape
     }
 
-    /// Finds cells closest to the center of the hexagon
+    /// Finds cells closest to the center of the hexagon, sorted by distance
     fn find_center_cells(&self) -> Vec<usize> {
         let center = self.grid.hex_grid().center;
         let mut cells_by_distance = Vec::new();
@@ -286,19 +293,19 @@ impl<'a> ShapeGenerator<'a> {
             cells_by_distance.push((i, distance));
         }
 
-        // Sort by distance to center
+        // Sort by distance to center (closest first)
         cells_by_distance.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
 
-        // Return the IDs of the 6 cells closest to center
-        let closest_count = std::cmp::min(6, cells_by_distance.len());
+        // Return all cell IDs sorted by distance from center
+        // This is critical for growing from center outward in a structured way
         cells_by_distance.iter()
-            .take(closest_count)
             .map(|(id, _)| *id)
             .collect()
     }
 
-    /// Generates a shape that connects to existing shapes
+    /// Generates a shape that connects to existing shapes and grows outward
     /// This ensures all shapes are connected to at least one other shape
+    /// and maintain the pattern of growing from center outward
     fn generate_connected_shape(
         &mut self,
         color: String,
@@ -315,44 +322,67 @@ impl<'a> ShapeGenerator<'a> {
         }
 
         // Find cells adjacent to the used cells (boundary cells)
-        let boundary_cells = self.find_boundary_cells(used_cells);
+        let mut boundary_cells = self.find_boundary_cells(used_cells);
         if boundary_cells.is_empty() {
             // Fall back to random placement if no boundary cells found
             return self.generate_shape_avoiding_cells(color_clone, opacity, target_size, used_cells);
         }
 
-        // Start with one of the boundary cells
-        let start_cell = boundary_cells[self.rng.gen_range(0..boundary_cells.len())];
+        // Sort boundary cells by distance from center to maintain center-outward growth
+        let center_cells = self.find_center_cells();
+        boundary_cells.sort_by(|&a, &b| {
+            // Find position in center_cells (lower index = closer to center)
+            let pos_a = center_cells.iter().position(|&x| x == a).unwrap_or(usize::MAX);
+            let pos_b = center_cells.iter().position(|&x| x == b).unwrap_or(usize::MAX);
+            pos_a.cmp(&pos_b)
+        });
+
+        // Start with the boundary cell closest to center
+        let start_cell = boundary_cells[0];
         shape.add_cell(start_cell);
 
         // Maximum attempts to reach target size
         let max_attempts = target_size * 3;
         let mut attempts = 0;
+        
+        // Use a layered growth approach similar to generate_center_shape
+        let mut current_layer = vec![start_cell];
+        let mut next_layer = Vec::new();
 
-        // Keep adding adjacent cells until we reach the target size or run out of options
+        // Keep adding adjacent cells in layers until we reach the target size
         while shape.cell_count() < target_size && attempts < max_attempts {
             attempts += 1;
-
+            
+            // If current layer is empty, move to next layer
+            if current_layer.is_empty() {
+                current_layer = next_layer;
+                next_layer = Vec::new();
+                
+                // If both layers are empty, we can't grow any further
+                if current_layer.is_empty() {
+                    break;
+                }
+            }
+            
+            // Take a cell from the current layer
+            let current_cell = current_layer.remove(0);
+            
             // Find all adjacent cells that aren't already in the shape or used elsewhere
-            let mut candidates = Vec::new();
-
-            for &cell_id in &shape.cells {
-                let adjacent = self.grid.adjacent_cells(cell_id);
-                for adj_id in adjacent {
-                    if !shape.contains_cell(adj_id) && !used_cells.contains(&adj_id) {
-                        candidates.push(adj_id);
+            let adjacent = self.grid.adjacent_cells(current_cell);
+            
+            for adj_id in adjacent {
+                if !shape.contains_cell(adj_id) && !used_cells.contains(&adj_id) {
+                    // Add this cell to the shape
+                    shape.add_cell(adj_id);
+                    // Add it to the next layer for expansion
+                    next_layer.push(adj_id);
+                    
+                    // If we've reached the target size, stop
+                    if shape.cell_count() >= target_size {
+                        break;
                     }
                 }
             }
-
-            // No more candidates, break
-            if candidates.is_empty() {
-                break;
-            }
-
-            // Choose a random adjacent cell
-            let next_cell = candidates[self.rng.gen_range(0..candidates.len())];
-            shape.add_cell(next_cell);
         }
 
         shape
@@ -374,7 +404,7 @@ impl<'a> ShapeGenerator<'a> {
         boundary
     }
 
-    /// Generates a shape while avoiding cells that are already used
+    /// Generates a shape with connected edges that grows from center outward while avoiding used cells
     fn generate_shape_avoiding_cells(
         &mut self,
         color: String,
@@ -389,15 +419,15 @@ impl<'a> ShapeGenerator<'a> {
             return shape;
         }
 
-        // Find an unused starting cell
+        // Get all cells sorted by distance from center
+        let center_cells = self.find_center_cells();
+        
+        // Find the first unused cell that is closest to the center
         let mut start_cell = None;
-        let mut attempts = 0;
-
-        while start_cell.is_none() && attempts < 100 {
-            attempts += 1;
-            let candidate = self.rng.gen_range(0..total_cells);
-            if !used_cells.contains(&candidate) {
-                start_cell = Some(candidate);
+        for &cell_id in &center_cells {
+            if !used_cells.contains(&cell_id) {
+                start_cell = Some(cell_id);
+                break;
             }
         }
 
@@ -411,32 +441,46 @@ impl<'a> ShapeGenerator<'a> {
 
         // Maximum attempts to reach target size
         let max_attempts = target_size * 3;
-        attempts = 0;
-
-        // Keep adding adjacent cells until we reach the target size or run out of options
+        let mut attempts = 0;
+        
+        // Use a layered growth approach to ensure growing from center outward
+        let mut current_layer = vec![start_cell];
+        let mut next_layer = Vec::new();
+        
+        // Keep adding adjacent cells in layers until we reach the target size
         while shape.cell_count() < target_size && attempts < max_attempts {
             attempts += 1;
-
+            
+            // If current layer is empty, move to next layer
+            if current_layer.is_empty() {
+                current_layer = next_layer;
+                next_layer = Vec::new();
+                
+                // If both layers are empty, we can't grow any further
+                if current_layer.is_empty() {
+                    break;
+                }
+            }
+            
+            // Take a cell from the current layer
+            let current_cell = current_layer.remove(0);
+            
             // Find all adjacent cells that aren't already in the shape or used elsewhere
-            let mut candidates = Vec::new();
-
-            for &cell_id in &shape.cells {
-                let adjacent = self.grid.adjacent_cells(cell_id);
-                for adj_id in adjacent {
-                    if !shape.contains_cell(adj_id) && !used_cells.contains(&adj_id) {
-                        candidates.push(adj_id);
+            let adjacent = self.grid.adjacent_cells(current_cell);
+            
+            for adj_id in adjacent {
+                if !shape.contains_cell(adj_id) && !used_cells.contains(&adj_id) {
+                    // Add this cell to the shape
+                    shape.add_cell(adj_id);
+                    // Add it to the next layer for expansion
+                    next_layer.push(adj_id);
+                    
+                    // If we've reached the target size, stop
+                    if shape.cell_count() >= target_size {
+                        break;
                     }
                 }
             }
-
-            // No more candidates, break
-            if candidates.is_empty() {
-                break;
-            }
-
-            // Choose a random adjacent cell
-            let next_cell = candidates[self.rng.gen_range(0..candidates.len())];
-            shape.add_cell(next_cell);
         }
 
         shape

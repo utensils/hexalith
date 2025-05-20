@@ -7,6 +7,9 @@ use color::ColorManager;
 use grid::TriangularGrid;
 use shape::{Shape, ShapeGenerator};
 
+// Re-export Theme enum for use in other modules
+pub use color::Theme;
+
 pub struct Generator {
     grid_size: u8,
     shapes_count: u8,
@@ -14,7 +17,7 @@ pub struct Generator {
     seed: Option<u64>,
     grid: Option<TriangularGrid>,
     shapes: Vec<Shape>,
-    color_scheme: String,
+    theme: Theme,
     allow_overlap: bool,
 }
 
@@ -27,14 +30,26 @@ impl Generator {
             seed,
             grid: None,
             shapes: Vec::new(),
-            color_scheme: "default".to_string(),
+            theme: Theme::Mesos, // Set Mesos as the default theme
             allow_overlap: false,
         }
     }
 
-    pub fn set_color_scheme(&mut self, color_scheme: &str) -> &mut Self {
-        self.color_scheme = color_scheme.to_string();
+    /// Set the color theme by theme enum
+    pub fn set_theme(&mut self, theme: Theme) -> &mut Self {
+        self.theme = theme;
         self
+    }
+    
+    /// Set the color theme by name
+    pub fn set_color_scheme(&mut self, color_scheme: &str) -> &mut Self {
+        self.theme = Theme::from(color_scheme);
+        self
+    }
+    
+    /// Get a list of available theme names
+    pub fn available_themes() -> Vec<String> {
+        ColorManager::available_themes()
     }
     
     pub fn set_allow_overlap(&mut self, allow_overlap: bool) -> &mut Self {
@@ -49,8 +64,8 @@ impl Generator {
 
         // Generate shapes
         if let Some(grid) = &self.grid {
-            // Set up color manager
-            let mut color_manager = ColorManager::default(self.seed);
+            // Set up color manager with the selected theme
+            let mut color_manager = ColorManager::with_theme(self.theme, self.seed);
 
             // Calculate shape size based on grid density
             // Higher density = smaller shapes

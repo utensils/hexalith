@@ -44,7 +44,7 @@ impl TriangularGrid {
         cells
     }
 
-    /// Subdivides a triangle into smaller triangular cells
+    /// Subdivides a triangle into smaller equiangular triangular cells with connecting edges
     fn subdivide_triangle(
         cells: &mut Vec<Cell>,
         p1: Point,
@@ -59,51 +59,56 @@ impl TriangularGrid {
             return;
         }
 
-        // Create a grid of points within the triangle
+        // Create a grid of points that ensures equiangular (60-60-60) triangles
         let mut points = Vec::with_capacity((divisions + 1) * (divisions + 2) / 2);
 
+        // Calculate triangular grid points using 60-degree angles
+        // This ensures all triangles have the same angles (60-60-60)
         for i in 0..=divisions {
-            let alpha = i as f64 / divisions as f64;
-
-            for j in 0..=i {
-                let beta = if i == 0 { 0.0 } else { j as f64 / i as f64 };
-
-                // Barycentric coordinates to Cartesian
-                let gamma = 1.0 - alpha - beta * alpha;
-                let x = gamma * p1.x + alpha * (1.0 - beta) * p2.x + alpha * beta * p3.x;
-                let y = gamma * p1.y + alpha * (1.0 - beta) * p2.y + alpha * beta * p3.y;
+            for j in 0..=divisions-i {
+                // Use linear interpolation to maintain equiangular triangles
+                let u = i as f64 / divisions as f64;
+                let v = j as f64 / divisions as f64;
+                let w = 1.0 - u - v;
+                
+                // Barycentric coordinates for equiangular triangles
+                let x = p1.x * w + p2.x * u + p3.x * v;
+                let y = p1.y * w + p2.y * u + p3.y * v;
 
                 points.push(Point::new(x, y));
             }
         }
 
-        // Connect the points to form triangular cells
+        // Connect the points to form equiangular triangular cells with shared edges
         let mut id = cells.len() + base_id;
+        
+        // Map from triangle grid indices to points array indices
+        let idx = |i, j| -> usize {
+            let offset = (0..i).map(|k| divisions + 1 - k).sum::<usize>();
+            offset + j
+        };
 
-        for row in 1..=divisions {
-            let row_start = (row * (row + 1)) / 2;
-            let prev_row_start = (row - 1) * row / 2;
-
-            for col in 0..row {
-                // Upper triangle
+        for i in 0..divisions {
+            for j in 0..divisions-i {
+                // Create first equiangular triangle
                 cells.push(Cell::new(
                     id,
                     [
-                        points[prev_row_start + col],
-                        points[row_start + col],
-                        points[row_start + col + 1],
+                        points[idx(i, j)],
+                        points[idx(i+1, j)],
+                        points[idx(i, j+1)],
                     ],
                 ));
                 id += 1;
 
-                // Lower triangle (except for the last column)
-                if col < row - 1 {
+                // Create second equiangular triangle if not on the edge
+                if j < divisions-i-1 {
                     cells.push(Cell::new(
                         id,
                         [
-                            points[prev_row_start + col],
-                            points[row_start + col + 1],
-                            points[prev_row_start + col + 1],
+                            points[idx(i+1, j)],
+                            points[idx(i+1, j+1)],
+                            points[idx(i, j+1)],
                         ],
                     ));
                     id += 1;
@@ -122,7 +127,7 @@ impl TriangularGrid {
         &mut self.hex_grid
     }
     
-    /// Generates a grid with exactly 24 triangles, similar to the original hexagonal logo generator
+    /// Generates a grid with exactly 24 equiangular triangles, similar to the original hexagonal logo generator
     fn generate_original_style_grid(hex_grid: &HexGrid) -> Vec<Cell> {
         let size = hex_grid.size;
         let center = hex_grid.center;
@@ -136,39 +141,49 @@ impl TriangularGrid {
             Point::new(x, y)
         };
         
-        let inner_distance = size * 0.5; // Distance to inner points
+        // Use 1/3 and 2/3 distances to create equiangular triangles that grow from center
+        let inner_distance1 = size * (1.0/3.0); // First inner ring
+        let inner_distance2 = size * (2.0/3.0); // Second inner ring
         
-        // Generate the 6 points at the inner hexagon corners
-        let mut inner_points = Vec::with_capacity(6);
+        // Generate the points at the inner hexagon corners
+        let mut inner_points1 = Vec::with_capacity(6);
+        let mut inner_points2 = Vec::with_capacity(6);
+        
         for i in 0..6 {
             let angle = i as f64 * 60.0; // 60 degrees per hexagon corner
-            inner_points.push(point_at(angle, inner_distance));
+            inner_points1.push(point_at(angle, inner_distance1));
+            inner_points2.push(point_at(angle, inner_distance2));
         }
         
-        // Create the 24 triangles (4 per sector)
+        // Create the 24 triangles (4 per sector) that grow from center outward
         let mut id = 0;
         
         for sector in 0..6 {
-            let v1 = hex_grid.vertices[sector];
-            let v2 = hex_grid.vertices[(sector + 1) % 6];
+            let v = hex_grid.vertices[sector]; // Outer vertex
+            let next_sector = (sector + 1) % 6;
             
-            let inner1 = inner_points[sector];
-            let inner2 = inner_points[(sector + 1) % 6];
+            // Inner points from first ring
+            let p1 = inner_points1[sector];
+            let p1_next = inner_points1[next_sector];
             
-            // Center to inner point 1
-            cells.push(Cell::new(id, [center, inner1, inner2]));
+            // Inner points from second ring
+            let p2 = inner_points2[sector];
+            let p2_next = inner_points2[next_sector];
+            
+            // 1. Center triangle (connects to center)
+            cells.push(Cell::new(id, [center, p1, p1_next]));
             id += 1;
             
-            // Inner point 1 to vertex 1
-            cells.push(Cell::new(id, [inner1, v1, v2]));
+            // 2. First ring triangle 
+            cells.push(Cell::new(id, [p1, p2, p1_next]));
             id += 1;
             
-            // Inner point 1 to inner point 2, to vertex 2
-            cells.push(Cell::new(id, [inner1, inner2, v2]));
+            // 3. Bridge triangle connecting rings
+            cells.push(Cell::new(id, [p1_next, p2, p2_next]));
             id += 1;
             
-            // Inner point 2 to center, to inner point 1
-            cells.push(Cell::new(id, [inner2, center, inner1]));
+            // 4. Outer triangle connecting to vertex
+            cells.push(Cell::new(id, [p2, v, p2_next]));
             id += 1;
         }
         

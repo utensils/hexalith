@@ -1,4 +1,4 @@
-use crate::generator::Generator;
+use crate::generator::{Generator, Theme};
 use crate::png;
 use crate::svg;
 use crate::utils;
@@ -26,9 +26,9 @@ pub struct Cli {
     #[arg(short, long)]
     pub uuid: Option<String>,
 
-    /// Color scheme
-    #[arg(short, long, default_value = "default")]
-    pub colors: String,
+    /// Color theme (mesos, google, blues, greens, reds, purples, rainbow)
+    #[arg(short = 't', long = "theme", default_value = "mesos")]
+    pub theme: String,
 
     /// Number of shapes to generate
     #[arg(short = 'n', long, default_value_t = 3)]
@@ -55,7 +55,7 @@ pub struct Cli {
     pub format: Format,
 
     /// Allow shapes to overlap with blended colors
-    #[arg(long)]
+    #[arg(long, default_value_t = true)]
     pub overlap: bool,
 
     /// Enable verbose output
@@ -98,7 +98,7 @@ pub fn run() -> Result<()> {
 
     // Set up the generator
     let mut generator = Generator::new(cli.grid_size, cli.shapes, cli.opacity, seed);
-    generator.set_color_scheme(&cli.colors)
+    generator.set_color_scheme(&cli.theme)
              .set_allow_overlap(cli.overlap);
 
     // Generate the logo
@@ -145,6 +145,7 @@ pub fn run() -> Result<()> {
         println!("Logo generated successfully:");
         println!("  Output: {}", output_path.display());
         println!("  Format: {}", cli.format);
+        println!("  Theme: {}", cli.theme);
         println!("  Grid size: {}", cli.grid_size);
         println!("  Shapes: {}", cli.shapes);
         println!("  Opacity: {}", cli.opacity);

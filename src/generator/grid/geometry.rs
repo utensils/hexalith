@@ -143,9 +143,36 @@ impl HexGrid {
 
     /// Checks if a point is inside the hexagonal boundary
     pub fn contains_point(&self, point: &Point) -> bool {
-        // Implementation of the point-in-polygon algorithm for hexagons
-        let mut inside = false;
+        // The point-in-polygon algorithm needs special handling for boundary points
+
+        // First check for exact vertex match
+        for vertex in &self.vertices {
+            if (vertex.x - point.x).abs() < 1e-6 && (vertex.y - point.y).abs() < 1e-6 {
+                return true;
+            }
+        }
+
+        // Then check if point is on any edge
         let mut j = self.vertices.len() - 1;
+        for i in 0..self.vertices.len() {
+            let vi = &self.vertices[i];
+            let vj = &self.vertices[j];
+
+            // Check if point is on this edge
+            let edge_length = vj.distance(vi);
+            let d1 = point.distance(vi);
+            let d2 = point.distance(vj);
+
+            if (d1 + d2 - edge_length).abs() < 1e-6 {
+                return true;
+            }
+
+            j = i;
+        }
+
+        // Finally, check if point is inside using ray casting algorithm
+        let mut inside = false;
+        j = self.vertices.len() - 1;
 
         for i in 0..self.vertices.len() {
             let vi = &self.vertices[i];

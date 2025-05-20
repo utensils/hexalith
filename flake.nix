@@ -65,16 +65,16 @@
 
           commands = [
             {
-              name = "build";
+              name = "rs-build";
               category = "development";
               help = "Build the project";
-              command = "cargo build";
+              command = "${rustToolchain}/bin/cargo build";
             }
             {
-              name = "run";
+              name = "rs-run";
               category = "development";
               help = "Run the project";
-              command = "cargo run -- \"$@\"";
+              command = "${rustToolchain}/bin/cargo run -- \"$@\"";
             }
             {
               name = "logo";
@@ -88,17 +88,17 @@
                 FORMAT="''${4:-svg}"
                 OUTPUT="''${5:-logo.svg}"
                 
-                cargo run -- --grid-size "$GRID_SIZE" --shapes "$SHAPES" --opacity "$OPACITY" --format "$FORMAT" --verbose "$OUTPUT"
+                ${rustToolchain}/bin/cargo run -- --grid-size "$GRID_SIZE" --shapes "$SHAPES" --opacity "$OPACITY" --format "$FORMAT" --verbose "$OUTPUT"
               '';
             }
             {
-              name = "example";
+              name = "rs-example";
               category = "development";
               help = "Run the simple example";
-              command = "cargo run --example simple";
+              command = "${rustToolchain}/bin/cargo run --example simple";
             }
             {
-              name = "fix-tests";
+              name = "rs-fix-tests";
               category = "development";
               help = "Fix broken test imports";
               command = ''
@@ -116,34 +116,34 @@
               '';
             }
             {
-              name = "test";
+              name = "rs-test";
               category = "development";
               help = "Run tests";
-              command = "cargo test";
+              command = "${rustToolchain}/bin/cargo test";
             }
             {
-              name = "fmt";
+              name = "rs-fmt";
               category = "development";
               help = "Format code";
               command = "${pkgs.rustfmt}/bin/rustfmt $(find src examples -name '*.rs')";
             }
             {
-              name = "check";
+              name = "rs-check";
               category = "development";
               help = "Check for compilation errors";
-              command = "cargo check";
+              command = "${rustToolchain}/bin/cargo check";
             }
             {
-              name = "clippy";
+              name = "rs-clippy";
               category = "development";
               help = "Run linter";
-              command = "cargo clippy";
+              command = "${rustToolchain}/bin/cargo-clippy";
             }
             {
-              name = "release";
+              name = "rs-release";
               category = "build";
               help = "Build for release";
-              command = "cargo build --release";
+              command = "${rustToolchain}/bin/cargo build --release";
             }
           ];
 

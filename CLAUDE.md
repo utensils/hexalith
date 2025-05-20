@@ -61,30 +61,48 @@ If you have direnv installed and enabled, the Nix environment will be automatica
 ```bash
 # Build the project
 nix develop -c cargo build
+# Or use the devshell command:
+rs-build
 
 # Run the project
 nix develop -c cargo run
+# Or use the devshell command:
+rs-run
 
 # Run with specific options
 nix develop -c cargo run -- --seed 12345 --format png logo.png
+# Or use the devshell command:
+rs-run --seed 12345 --format png logo.png
 
 # Run tests
 nix develop -c cargo test
+# Or use the devshell command:
+rs-test
 
 # Run specific test
 nix develop -c cargo test <test_name>
+# Or use the devshell command:
+rs-test <test_name>
 
 # Build for release
 nix develop -c cargo build --release
+# Or use the devshell command:
+rs-release
 
 # Check for compilation errors without building
 nix develop -c cargo check
+# Or use the devshell command:
+rs-check
 
 # Format code
 nix develop -c cargo fmt
+# Or use the devshell command:
+rs-fmt
 
 # Run linter
 nix develop -c cargo clippy
+# Or use the devshell command (uses direct binary path to clippy):
+rs-clippy
 ```
 
 ## CLI Interface

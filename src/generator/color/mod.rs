@@ -33,10 +33,7 @@ impl ColorManager {
         )
     }
 
-    /// Get all colors in the palette
-    pub fn palette(&self) -> &[String] {
-        &self.palette
-    }
+    // Public methods that are directly used in the application
 
     /// Get a random color from the palette
     pub fn get_random_color(&mut self) -> String {
@@ -53,7 +50,13 @@ impl ColorManager {
         colors
     }
 
-    /// Convert a hex color string to RGB
+    // Helper methods used only in tests
+    #[cfg(test)]
+    pub fn palette(&self) -> &[String] {
+        &self.palette
+    }
+
+    #[cfg(test)]
     pub fn hex_to_rgb(hex: &str) -> (u8, u8, u8) {
         let hex = hex.trim_start_matches('#');
 
@@ -64,12 +67,12 @@ impl ColorManager {
         (r, g, b)
     }
 
-    /// Convert RGB to hex color string
+    #[cfg(test)]
     pub fn rgb_to_hex(r: u8, g: u8, b: u8) -> String {
         format!("#{:02X}{:02X}{:02X}", r, g, b)
     }
 
-    /// Blend two colors with the given opacity
+    #[cfg(test)]
     pub fn blend_colors(color1: &str, color2: &str, opacity: f32) -> String {
         let (r1, g1, b1) = Self::hex_to_rgb(color1);
         let (r2, g2, b2) = Self::hex_to_rgb(color2);

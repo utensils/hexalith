@@ -1181,4 +1181,104 @@ mod tests {
         // Should not exceed target size
         assert!(shape.cell_count() <= size);
     }
+    
+    #[test]
+    fn test_angular_shape() {
+        let grid = TriangularGrid::new(100.0, 4);
+        let mut generator = ShapeGenerator::new(&grid, Some(42)); // Fixed seed for deterministic testing
+
+        let color = "#FF0000".to_string();
+        let opacity = 0.8;
+        let target_size = 10;
+
+        let shape = generator.generate_angular_shape(color, opacity, target_size);
+
+        // Shape should have cells
+        assert!(!shape.cells.is_empty());
+        assert!(shape.cell_count() <= target_size);
+        
+        // Test with extreme case - zero target size
+        let shape = generator.generate_angular_shape("#00FF00".to_string(), 0.5, 0);
+        assert_eq!(shape.cell_count(), 0);
+    }
+    
+    #[test]
+    fn test_boundary_cells() {
+        let grid = TriangularGrid::new(100.0, 4);
+        let generator = ShapeGenerator::new(&grid, Some(42)); // Fixed seed for deterministic testing
+
+        // Create a set of used cells
+        let mut used_cells = HashSet::new();
+        used_cells.insert(0);
+        used_cells.insert(1);
+        used_cells.insert(2);
+        
+        // Find boundary cells
+        let boundary = generator.find_boundary_cells(&used_cells);
+        
+        // Should have found some boundary cells
+        assert!(!boundary.is_empty());
+        
+        // Boundary cells should not include any used cells
+        for &cell_id in &boundary {
+            assert!(!used_cells.contains(&cell_id));
+        }
+    }
+    
+    #[test]
+    fn test_shape_avoiding_cells() {
+        let grid = TriangularGrid::new(100.0, 4);
+        let mut generator = ShapeGenerator::new(&grid, Some(42)); // Fixed seed for deterministic testing
+
+        let color = "#FF0000".to_string();
+        let opacity = 0.8;
+        let target_size = 10;
+        
+        // Create a set of used cells
+        let mut used_cells = HashSet::new();
+        used_cells.insert(0); // Use the center cell
+        
+        // Generate a shape avoiding used cells
+        let shape = generator.generate_shape_avoiding_cells(color, opacity, target_size, &used_cells);
+        
+        // Shape should have cells
+        assert!(!shape.cells.is_empty());
+        assert!(shape.cell_count() <= target_size);
+        
+        // Shape should not include any used cells
+        for &cell_id in &shape.cells {
+            assert!(!used_cells.contains(&cell_id));
+        }
+        
+        // Test with all cells used
+        let mut all_used = HashSet::new();
+        for i in 0..grid.cell_count() {
+            all_used.insert(i);
+        }
+        
+        let shape = generator.generate_shape_avoiding_cells("#00FF00".to_string(), 0.5, 5, &all_used);
+        // Should be empty since no cells are available
+        assert_eq!(shape.cell_count(), 0);
+    }
+    
+    #[test]
+    fn test_balanced_shape() {
+        let grid = TriangularGrid::new(100.0, 4);
+        let mut generator = ShapeGenerator::new(&grid, Some(42)); // Fixed seed for deterministic testing
+
+        let color = "#FF0000".to_string();
+        let opacity = 0.8;
+        let target_size = 10;
+
+        let shape = generator.generate_balanced_shape(color, opacity, target_size);
+
+        // Shape should have cells
+        assert!(!shape.cells.is_empty());
+        assert!(shape.cell_count() <= target_size);
+        
+        // Test with entropy-based RNG
+        let mut generator = ShapeGenerator::new(&grid, None); // No seed, use entropy
+        let shape = generator.generate_balanced_shape("#00FF00".to_string(), 0.5, 8);
+        assert!(!shape.cells.is_empty());
+    }
 }

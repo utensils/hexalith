@@ -129,7 +129,7 @@
 
                 # Set up coverage environment
                 export CARGO_INCREMENTAL=0
-                export RUSTFLAGS="-Cinstrument-coverage"
+                export RUSTFLAGS="-Cinstrument-coverage -Ccodegen-units=1 -Copt-level=0"
                 export LLVM_PROFILE_FILE="hexalith-%p-%m.profraw"
                 
                 # Run tests to generate coverage data
@@ -138,6 +138,7 @@
 
                 # Generate HTML report
                 echo "Generating coverage report..."
+                # Enable branch tracking with llvm instrumentation data
                 ${pkgs.grcov}/bin/grcov . \
                   --binary-path ./target/debug/deps/ \
                   --source-dir . \
@@ -146,7 +147,34 @@
                   --branch \
                   --ignore "target/*" \
                   --ignore "tests/*" \
-                  --ignore-not-existing
+                  --ignore-not-existing \
+                  --llvm \
+                  --excl-br-line "unreachable|if (self.is_empty())" \
+                  --excl-start "fn main" \
+                  --keep-only "src/*"
+                  
+                # Also generate a JSON summary for easier parsing
+                ${pkgs.grcov}/bin/grcov . \
+                  --binary-path ./target/debug/deps/ \
+                  --source-dir . \
+                  --output-path ./target/coverage/summary.json \
+                  --output-type covdir \
+                  --branch \
+                  --ignore "target/*" \
+                  --ignore "tests/*" \
+                  --ignore-not-existing \
+                  --llvm \
+                  --excl-br-line "unreachable|if (self.is_empty())" \
+                  --excl-start "fn main" \
+                  --keep-only "src/*"
+
+                # Print text summary from the coverage.json file
+                echo ""
+                echo "Coverage Summary:"
+                echo "================="
+                percentage=$(cat ./target/coverage/html/coverage.json | grep -o '"message":"[0-9.]*%' | cut -d':' -f2 | tr -d '"')
+                echo "Overall coverage: $percentage"
+                echo ""
 
                 echo "Coverage report available at ./target/coverage/html/index.html"
                 echo "Opening coverage report in browser..."

@@ -147,3 +147,91 @@ fn test_verbose_output() {
         .success()
         .stdout(predicate::str::contains("Logo generated successfully"));
 }
+
+#[test]
+fn test_extension_correction() {
+    let temp_dir = tempdir().unwrap();
+    let output_path = temp_dir.path().join("logo.txt"); // Incorrect extension
+    
+    // Generate PNG but with a .txt extension
+    let mut cmd = Command::cargo_bin("hexlogogen").unwrap();
+    cmd.arg("--format")
+       .arg("png")
+       .arg("--verbose")  // Need verbose to see the warning
+       .arg(output_path.to_str().unwrap());
+    
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Warning: Changing extension from .txt to .png"));
+    
+    // Check that the file was created with the correct extension
+    let corrected_path = temp_dir.path().join("logo.png");
+    assert!(corrected_path.exists());
+    
+    // Test SVG with wrong extension
+    let output_path = temp_dir.path().join("logo.png"); // Incorrect extension for SVG
+    
+    let mut cmd = Command::cargo_bin("hexlogogen").unwrap();
+    cmd.arg("--format")
+       .arg("svg")
+       .arg("--verbose")
+       .arg(output_path.to_str().unwrap());
+    
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Warning: Changing extension from .png to .svg"));
+    
+    // Check that the file was created with the correct extension
+    let corrected_path = temp_dir.path().join("logo.svg");
+    assert!(corrected_path.exists());
+}
+
+#[test]
+fn test_missing_extension() {
+    let temp_dir = tempdir().unwrap();
+    let output_path = temp_dir.path().join("logo"); // No extension
+    
+    // Generate SVG with no extension
+    let mut cmd = Command::cargo_bin("hexlogogen").unwrap();
+    cmd.arg(output_path.to_str().unwrap());
+    
+    cmd.assert().success();
+    
+    // Check that the file was created with the correct extension
+    let corrected_path = temp_dir.path().join("logo.svg");
+    assert!(corrected_path.exists());
+    
+    // Generate PNG with no extension
+    let output_path = temp_dir.path().join("logo2"); // No extension
+    
+    let mut cmd = Command::cargo_bin("hexlogogen").unwrap();
+    cmd.arg("--format")
+       .arg("png")
+       .arg(output_path.to_str().unwrap());
+    
+    cmd.assert().success();
+    
+    // Check that the file was created with the correct extension
+    let corrected_path = temp_dir.path().join("logo2.png");
+    assert!(corrected_path.exists());
+}
+
+#[test]
+fn test_output_with_uuid() {
+    let temp_dir = tempdir().unwrap();
+    let output_path = temp_dir.path().join("logo.svg");
+    
+    // Generate with a UUID instead of seed
+    let mut cmd = Command::cargo_bin("hexlogogen").unwrap();
+    cmd.arg("--uuid")
+        .arg("f47ac10b-58cc-4372-a567-0e02b2c3d479")
+        .arg("--verbose")
+        .arg(output_path.to_str().unwrap());
+    
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("UUID: f47ac10b-58cc-4372-a567-0e02b2c3d479"));
+    
+    // Check that the file was created
+    assert!(output_path.exists());
+}

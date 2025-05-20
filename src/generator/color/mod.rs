@@ -609,4 +609,99 @@ mod tests {
         let contrast = ColorManager::color_contrast("#FF0000", "#FF0001");
         assert!(contrast < 1.1); // Should be very close to 1.0
     }
+    
+    #[test]
+    fn test_with_theme_name() {
+        // Test with a valid theme name
+        let manager = ColorManager::with_theme_name("blues", Some(42));
+        let palette = manager.palette();
+        
+        // Verify colors are from the blues theme
+        assert!(palette.iter().any(|color| color.to_uppercase() == "#1E88E5" || 
+                                         color.to_uppercase() == "#2196F3" || 
+                                         color.to_uppercase() == "#0D47A1"));
+        
+        // Test with another theme
+        let manager = ColorManager::with_theme_name("google", Some(42));
+        let palette = manager.palette();
+        
+        // Verify colors are from the google theme
+        assert!(palette.iter().any(|color| color.to_uppercase() == "#4285F4"));
+    }
+    
+    #[test]
+    fn test_default() {
+        // Test default theme (should be Mesos)
+        let manager = ColorManager::default(Some(42));
+        let palette = manager.palette();
+        
+        // Verify colors are from the Mesos theme
+        assert!(palette.iter().any(|color| color.to_uppercase() == "#FFCC09"));
+        assert!(palette.iter().any(|color| color.to_uppercase() == "#E42728"));
+    }
+    
+    #[test]
+    fn test_colors_with_blend() {
+        let mut manager = ColorManager::default(Some(42));
+        
+        let (color1, color2, blend) = manager.get_colors_with_blend();
+        
+        // Verify the colors are from the palette
+        assert!(manager.palette().contains(&color1));
+        assert!(manager.palette().contains(&color2));
+        
+        // Verify that color1 and color2 are different
+        assert_ne!(color1, color2);
+        
+        // Verify the blend logic
+        let (r1, g1, b1) = ColorManager::hex_to_rgb(&color1);
+        let (r2, g2, b2) = ColorManager::hex_to_rgb(&color2);
+        let (rb, gb, bb) = ColorManager::hex_to_rgb(&blend);
+        
+        // The blend should be the average of the RGB values
+        assert_eq!(rb, ((r1 as u16 + r2 as u16) / 2) as u8);
+        assert_eq!(gb, ((g1 as u16 + g2 as u16) / 2) as u8);
+        assert_eq!(bb, ((b1 as u16 + b2 as u16) / 2) as u8);
+    }
+    
+    #[test]
+    fn test_color_avoiding_adjacency() {
+        use crate::generator::grid::triangular::TriangularGrid;
+        use crate::generator::shape::Shape;
+        
+        // Create a triangular grid for testing
+        let grid = TriangularGrid::new(100.0, 2);
+        
+        // Create a ColorManager
+        let mut manager = ColorManager::default(Some(42));
+        
+        // Test with no existing shapes (should just return a random color)
+        let shape_cells = vec![0, 1, 2];
+        let existing_shapes: Vec<Shape> = vec![];
+        let color = manager.get_color_avoiding_adjacency(&grid, &shape_cells, &existing_shapes);
+        
+        assert!(manager.palette().contains(&color));
+        
+        // Create a shape with a known color
+        let mut shape1 = Shape::new("#FF0000".to_string(), 0.8);
+        shape1.add_cell(3);
+        shape1.add_cell(4);
+        
+        // Create another shape with a different color
+        let mut shape2 = Shape::new("#00FF00".to_string(), 0.8);
+        shape2.add_cell(6);
+        shape2.add_cell(7);
+        
+        let existing_shapes = vec![shape1, shape2];
+        
+        // Get a color avoiding adjacency to these shapes
+        let color = manager.get_color_avoiding_adjacency(&grid, &shape_cells, &existing_shapes);
+        
+        // The color should be from the palette
+        assert!(manager.palette().contains(&color));
+        
+        // The color should be different from the existing shapes' colors
+        assert_ne!(color, "#FF0000");
+        assert_ne!(color, "#00FF00");
+    }
 }

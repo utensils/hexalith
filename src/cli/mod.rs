@@ -1,4 +1,4 @@
-use crate::generator::{Generator, Theme};
+use crate::generator::Generator;
 use crate::png;
 use crate::svg;
 use crate::utils;

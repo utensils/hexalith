@@ -50,7 +50,7 @@ Options:
   -n, --shapes <SHAPES>        Number of shapes to generate [default: 3]
   -g, --grid-size <GRID_SIZE>  Grid density (2-8) [default: 2]
   -o, --opacity <OPACITY>      Shape opacity [default: 0.8]
-  --overlap                  Allow shapes to overlap with blended colors [default: true]
+  --overlap                    Allow shapes to overlap with blended colors [default: true]
   -w, --width <WIDTH>          Output width in pixels (PNG only) [default: 512]
   -H, --height <HEIGHT>        Output height in pixels (PNG only) [default: 512]
   -f, --format <FORMAT>        Output format [default: svg] [possible values: svg, png]
@@ -148,6 +148,47 @@ cargo test
 cargo test grid  # Run grid-related tests
 cargo test svg   # Run SVG output tests
 ```
+
+### Code Coverage
+
+If you have Nix with flakes enabled:
+
+```bash
+# Generate code coverage report
+nix develop -c rs-coverage
+
+# The HTML report will open in your browser
+# Or you can find it at ./target/coverage/html/index.html
+```
+
+For non-Nix users, you can generate coverage using grcov directly:
+
+```bash
+# Install necessary tools
+rustup component add llvm-tools-preview
+cargo install grcov
+
+# Set up environment variables
+export CARGO_INCREMENTAL=0
+export RUSTFLAGS="-Cinstrument-coverage -Ccodegen-units=1 -Copt-level=0"
+export LLVM_PROFILE_FILE="hexalith-%p-%m.profraw"
+
+# Run tests
+cargo test
+
+# Generate coverage report
+grcov . --binary-path ./target/debug/deps/ \
+  --source-dir . \
+  --output-path ./target/coverage/ \
+  --output-type html \
+  --branch \
+  --ignore "target/*" \
+  --ignore "tests/*" \
+  --ignore-not-existing \
+  --llvm
+```
+
+> **Note**: The current coverage report provides reliable metrics for line coverage but has limitations with branch coverage measurement. This is a known issue with LLVM instrumentation in stable Rust. For more accurate branch coverage, a specialized setup with nightly Rust and additional tools may be required in the future.
 
 ## Project Structure
 

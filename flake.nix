@@ -80,16 +80,10 @@
             {
               name = "logo";
               category = "hexalith";
-              help = "Generate a logo with custom options";
+              help = "Generate a logo using default settings";
               command = ''
                 echo "Generating logo..."
-                GRID_SIZE="''${1:-6}"
-                SHAPES="''${2:-3}"
-                OPACITY="''${3:-0.8}"
-                FORMAT="''${4:-svg}"
-                OUTPUT="''${5:-logo.svg}"
-                
-                ${rustToolchain}/bin/cargo run -- --grid-size "$GRID_SIZE" --shapes "$SHAPES" --opacity "$OPACITY" --format "$FORMAT" --verbose "$OUTPUT"
+                ${rustToolchain}/bin/cargo run -- --format svg --verbose logo.svg
               '';
             }
             {
@@ -174,11 +168,6 @@
                 # Create the logo generation script
                 cat > /tmp/generate_logo.sh << 'EOF'
                 #!/bin/sh
-                # Generate random parameters
-                GRID_SIZE=$(( RANDOM % 8 + 3 ))  # Random grid size between 3-10
-                SHAPES=$(( RANDOM % 5 + 1 ))     # Random shapes between 1-5
-                OPACITY=$(awk -v min=0.5 -v max=1.0 'BEGIN{srand(); print min+rand()*(max-min)}')
-                
                 # Create a temporary directory for the cargo run
                 TEMP_DIR=$(mktemp -d)
                 cd "$TEMP_DIR"
@@ -186,13 +175,8 @@
                 # Copy the project to the temporary directory
                 cp -r ${toString ./.}/* .
                 
-                # Generate a random logo with our Rust application
+                # Set up for logo generation
                 OUTPUT_FILE="/tmp/logo_output.svg"
-                
-                # Generate random parameters for a unique logo each time
-                GRID_SIZE=$(( RANDOM % 8 + 3 ))  # Random grid size between 3-10
-                SHAPES=$(( RANDOM % 5 + 1 ))     # Random shapes between 1-5
-                OPACITY=$(awk -v min=0.5 -v max=1.0 'BEGIN{srand(); print min+rand()*(max-min)}')
                 
                 # Run the logo generator, redirecting build output to /dev/null
                 ${rustToolchain}/bin/cargo run --quiet -- --format svg "$OUTPUT_FILE" 2>/dev/null

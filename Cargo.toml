@@ -1,0 +1,33 @@
+[package]
+name = "hexlogogen"
+version = "0.1.0"
+edition = "2021"
+description = "Modern geometric logo generator in Rust - creates unique hexagonal designs with minimal configuration"
+authors = ["James Brink"]
+license = "MIT"
+repository = "https://github.com/utensils/hexalith"
+keywords = ["logo", "generator", "hexagon", "svg", "design"]
+categories = ["command-line-utilities", "graphics"]
+
+[dependencies]
+clap = { version = "4.4", features = ["derive"] }
+uuid = { version = "1.7", features = ["v4", "serde"] }
+rand = "0.8"
+svg = "0.14"
+rand_chacha = "0.3"
+tiny-skia = "0.11"
+resvg = "0.36"
+usvg = "0.36"
+
+[dev-dependencies]
+assert_cmd = "2.0"
+predicates = "3.0"
+tempfile = "3.8"
+
+[lib]
+name = "hexlogogen"
+path = "src/lib.rs"
+
+[[bin]]
+name = "hexlogogen"
+path = "src/main.rs"

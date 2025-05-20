@@ -1,11 +1,11 @@
+mod color;
 pub mod grid;
 pub mod shape;
-mod color;
 
 use crate::Result;
+use color::ColorManager;
 use grid::TriangularGrid;
 use shape::{Shape, ShapeGenerator};
-use color::ColorManager;
 
 pub struct Generator {
     grid_size: u8,
@@ -29,7 +29,7 @@ impl Generator {
             color_scheme: "default".to_string(),
         }
     }
-    
+
     pub fn set_color_scheme(&mut self, color_scheme: &str) -> &mut Self {
         self.color_scheme = color_scheme.to_string();
         self
@@ -39,23 +39,23 @@ impl Generator {
         // Initialize the triangular grid
         let grid = TriangularGrid::new(100.0, self.grid_size);
         self.grid = Some(grid);
-        
+
         // Generate shapes
         if let Some(grid) = &self.grid {
             // Set up color manager
             let mut color_manager = ColorManager::default(self.seed);
-            
+
             // Calculate shape size based on grid density
             // Higher density = smaller shapes
             let total_cells = grid.cell_count();
             let min_size = (total_cells as f32 * 0.01).round() as usize;
             let max_size = (total_cells as f32 * 0.05).round() as usize;
             let size_range = (min_size.max(3), max_size.max(min_size + 2));
-            
+
             // Generate the shapes
             let mut shape_generator = ShapeGenerator::new(grid, self.seed);
             let colors = color_manager.get_random_colors(self.shapes_count as usize);
-            
+
             self.shapes = shape_generator.generate_shapes(
                 colors,
                 self.opacity,
@@ -63,14 +63,14 @@ impl Generator {
                 size_range,
             );
         }
-        
+
         Ok(())
     }
-    
+
     pub fn grid(&self) -> Option<&TriangularGrid> {
         self.grid.as_ref()
     }
-    
+
     pub fn shapes(&self) -> &[Shape] {
         &self.shapes
     }

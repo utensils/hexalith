@@ -147,13 +147,13 @@
             }
           ];
 
-          # Configure devshell welcome and menu
+          # Configure devshell welcome
           motd = ''
             🦀 Hexalith - Modern geometric logo generator in Rust
           '';
           
-          # Enable the menu
-          menu.enable = true;
+          # Show menu automatically on shell entry
+          devshell.startup.menu.text = "menu";
         };
 
         packages.default = pkgs.rustPlatform.buildRustPackage {

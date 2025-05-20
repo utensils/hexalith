@@ -1,7 +1,7 @@
 mod geometry;
-mod triangular;
 #[cfg(test)]
 mod tests;
+mod triangular;
 
-pub use geometry::{Point, Cell, HexGrid};
+pub use geometry::{Cell, HexGrid, Point};
 pub use triangular::TriangularGrid;

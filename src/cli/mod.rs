@@ -1,6 +1,6 @@
 use crate::generator::Generator;
-use crate::svg;
 use crate::png;
+use crate::svg;
 use crate::utils;
 use crate::Result;
 use clap::{Parser, ValueEnum};
@@ -85,45 +85,49 @@ impl std::fmt::Display for Format {
 
 pub fn run() -> Result<()> {
     let cli = Cli::parse();
-    
+
     // Process seed/UUID
     let seed = match &cli.uuid {
         Some(uuid) => Some(utils::uuid_to_seed(uuid)?),
         None => cli.seed,
     };
-    
+
     // Set up the generator
     let mut generator = Generator::new(cli.grid_size, cli.shapes, cli.opacity, seed);
     generator.set_color_scheme(&cli.colors);
-    
+
     // Generate the logo
     generator.generate()?;
-    
+
     // Make sure the output path has the correct extension
     let mut output_path = PathBuf::from(&cli.output);
     if let Some(ext) = output_path.extension().and_then(|e| e.to_str()) {
         if ext != cli.format.extension() {
             if cli.verbose {
-                println!("Warning: Changing extension from .{} to .{}", ext, cli.format.extension());
+                println!(
+                    "Warning: Changing extension from .{} to .{}",
+                    ext,
+                    cli.format.extension()
+                );
             }
             output_path.set_extension(cli.format.extension());
         }
     } else {
         output_path.set_extension(cli.format.extension());
     }
-    
+
     // Generate and save the output
     match cli.format {
         Format::Svg => {
             let svg_data = svg::generate_svg(&generator, cli.width, cli.height)?;
             svg::save_svg(&svg_data, &output_path)?;
-        },
+        }
         Format::Png => {
             let png_data = png::generate_png(&generator, cli.width, cli.height)?;
             png::save_png(&png_data, &output_path)?;
-        },
+        }
     }
-    
+
     if cli.verbose {
         let seed_info = match &cli.uuid {
             Some(uuid) => format!("UUID: {}", uuid),
@@ -132,7 +136,7 @@ pub fn run() -> Result<()> {
                 None => "Random generation (no seed)".to_string(),
             },
         };
-        
+
         println!("Logo generated successfully:");
         println!("  Output: {}", output_path.display());
         println!("  Format: {}", cli.format);
@@ -141,6 +145,6 @@ pub fn run() -> Result<()> {
         println!("  Opacity: {}", cli.opacity);
         println!("  {}", seed_info);
     }
-    
+
     Ok(())
 }

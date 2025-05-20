@@ -6,13 +6,32 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Hexalith (HexLogoGen) is a modern geometric logo generator written in Rust. It creates unique hexagonal designs with minimal configuration, inspired by the Mesos Framework Logo Generator style. The tool generates random, geometric logos based on triangles within a hexagonal grid.
 
+## Project Structure
+
+```
+hexalith/
+├── src/
+│   ├── cli/              # Command-line interface handling
+│   ├── generator/        # Core logic for logo generation
+│   │   ├── grid/         # Hexagonal grid geometry
+│   │   ├── shape/        # Shape generation algorithms  
+│   │   └── color/        # Color management
+│   ├── svg/              # SVG output generation
+│   ├── png/              # PNG conversion from SVG
+│   ├── utils/            # Helper functions
+│   ├── lib.rs            # Library exports
+│   └── main.rs           # Application entry point
+├── tests/                # Integration tests
+└── examples/             # Example usages
+```
+
 ## Architecture
 
 This project follows a modular architecture with the following components:
 
 1. **CLI Module**: Handles user input, argument parsing using Clap, and help documentation
 2. **Generator Module**: Core logic for creating logos
-   - Hexagon/Grid Generator: Creates the base grid
+   - Hexagon/Grid Generator: Creates the base grid with triangular cells
    - Shape Generator: Creates random polygon shapes
    - Color Manager: Handles color selection and blending
 3. **SVG Module**: Converts generated shapes to SVG format
@@ -46,6 +65,9 @@ nix develop -c cargo build
 # Run the project
 nix develop -c cargo run
 
+# Run with specific options
+nix develop -c cargo run -- --seed 12345 --format png logo.png
+
 # Run tests
 nix develop -c cargo test
 
@@ -70,25 +92,24 @@ nix develop -c cargo clippy
 The command-line interface includes these options:
 
 ```
-USAGE:
-    hexlogogen [OPTIONS] [OUTPUT]
+Usage: hexlogogen [OPTIONS] [OUTPUT]
 
-ARGS:
-    <output>    Output file path [default: logo.svg]
+Arguments:
+  [OUTPUT]  Output file path [default: logo.svg]
 
-OPTIONS:
-    -s, --seed <SEED>             Seed for deterministic generation
-    -u, --uuid <UUID>             UUID for deterministic generation (overrides seed)
-    -c, --colors <COLORS>         Color scheme [default: default]
-    -n, --shapes <NUM>            Number of shapes to generate [default: 3]
-    -g, --grid-size <SIZE>        Grid density (3-8) [default: 6]
-    -o, --opacity <OPACITY>       Shape opacity [default: 0.8]
-    -w, --width <WIDTH>           Output width in pixels (PNG only)
-    -h, --height <HEIGHT>         Output height in pixels (PNG only)
-    -f, --format <FORMAT>         Output format: svg or png [default: svg]
-    -v, --verbose                 Enable verbose output
-        --help                    Print help information
-        --version                 Print version information
+Options:
+  -s, --seed <SEED>            Seed for deterministic generation
+  -u, --uuid <UUID>            UUID for deterministic generation (overrides seed)
+  -c, --colors <COLORS>        Color scheme [default: default]
+  -n, --shapes <SHAPES>        Number of shapes to generate [default: 3]
+  -g, --grid-size <GRID_SIZE>  Grid density (3-8) [default: 6]
+  -o, --opacity <OPACITY>      Shape opacity [default: 0.8]
+  -w, --width <WIDTH>          Output width in pixels (PNG only) [default: 512]
+  -H, --height <HEIGHT>        Output height in pixels (PNG only) [default: 512]
+  -f, --format <FORMAT>        Output format [default: svg] [possible values: svg, png]
+  -v, --verbose                Enable verbose output
+  -h, --help                   Print help
+  -V, --version                Print version
 ```
 
 ## Dependencies
@@ -118,3 +139,28 @@ The project relies on these Rust crates:
 - Implement proper error handling with the Result type
 - Add documentation comments for public APIs
 - Keep the code clean, modular and maintainable
+
+## Common Tasks
+
+### Adding a New Feature
+
+1. Identify the module where the feature belongs
+2. Implement the core functionality in the appropriate module
+3. Update the CLI interface in `src/cli/mod.rs` if needed
+4. Add tests for the new functionality
+5. Update documentation in README.md and CLAUDE.md
+
+### Fixing a Bug
+
+1. Write a test that reproduces the bug
+2. Fix the bug in the appropriate module
+3. Ensure all tests pass
+4. Document the fix in the commit message
+
+### Adding a New Output Format
+
+1. Create a new module in `src/` for the format
+2. Implement conversion from the internal representation
+3. Add the new format to the Format enum in `src/cli/mod.rs`
+4. Update the CLI to handle the new format
+5. Add tests for the new format

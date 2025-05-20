@@ -13,7 +13,7 @@ Hexalith (HexLogoGen) is a modern geometric logo generator written in Rust. It c
 - **Center-Out Growth**: Shapes grow from the center outward for balanced compositions
 - **Multiple Color Themes**: Choose from Mesos, Google, Blues, Greens, Reds, Purples, or Rainbow themes
 - **Overlapping Shapes**: By default, shapes overlap with color blending for rich designs
-- **Deterministic Generation**: Use seeds or UUIDs to generate reproducible logos
+- **Enhanced Randomization**: Even with the same seed, designs vary slightly between generations
 - **SVG and PNG Output**: Export in vector or raster formats as needed
 - **Customizable Parameters**: Control grid density, shape count, opacity, and more
 
@@ -234,7 +234,8 @@ The generator supports multiple color themes:
 - Shapes can have different colors with configurable opacity
 - Color blending happens at shape intersections when overlap is enabled
 - The tool supports both random and deterministic (seeded) generation
-- Seed-based generation ensures reproducible results
+- Seed-based generation provides semi-reproducible results with added randomness
+- Each run includes some time-based randomization for more variation in the designs
 - UUID can be used for deterministic generation
 - SVG output is crisp and scalable
 - PNG output with configurable dimensions

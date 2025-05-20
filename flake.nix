@@ -49,7 +49,6 @@
           cargo-watch
           cargo-edit
           nixpkgs-fmt
-          webhook
         ];
 
       in rec {
@@ -140,71 +139,7 @@
               help = "Build for release";
               command = "${rustToolchain}/bin/cargo build --release";
             }
-            {
-              name = "serve-logo";
-              category = "hexalith";
-              help = "Start a webhook server to serve random logos in the browser";
-              command = ''
-                # Create hooks.json configuration file
-                cat > /tmp/hooks.json << 'EOF'
-                [
-                  {
-                    "id": "logo",
-                    "execute-command": "/tmp/generate_logo.sh",
-                    "command-working-directory": "/tmp",
-                    "pass-arguments-to-command": [],
-                    "response-headers": [
-                      {
-                        "name": "Content-Type",
-                        "value": "image/svg+xml"
-                      }
-                    ],
-                    "include-command-output-in-response": true,
-                    "response-message": ""
-                  }
-                ]
-                EOF
-                
-                # Create the logo generation script
-                cat > /tmp/generate_logo.sh << 'EOF'
-                #!/bin/sh
-                # Create a temporary directory for the cargo run
-                TEMP_DIR=$(mktemp -d)
-                cd "$TEMP_DIR"
-                
-                # Copy the project to the temporary directory
-                cp -r ${toString ./.}/* .
-                
-                # Set up for logo generation
-                OUTPUT_FILE="/tmp/logo_output.svg"
-                
-                # Run the logo generator, redirecting build output to /dev/null
-                ${rustToolchain}/bin/cargo run --quiet -- --format svg "$OUTPUT_FILE" 2>/dev/null
-                
-                # Output the SVG content with XML declaration
-                if [ -f "$OUTPUT_FILE" ] && [ -s "$OUTPUT_FILE" ]; then
-                  # Add XML declaration if it's missing
-                  if ! grep -q '<?xml' "$OUTPUT_FILE"; then
-                    echo '<?xml version="1.0" encoding="UTF-8"?>'
-                  fi
-                  cat "$OUTPUT_FILE"
-                else
-                  # Fallback SVG if generation fails
-                  echo '<?xml version="1.0" encoding="UTF-8"?>'
-                  echo '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">'
-                  echo '  <rect width="200" height="200" fill="#f0f0f0"/>'
-                  echo '  <text x="20" y="100" font-family="Arial" font-size="14">Logo generation failed</text>'
-                  echo '</svg>'
-                fi
-                EOF
-                
-                chmod +x /tmp/generate_logo.sh
-                
-                echo "Starting webhook server on port 9000..."
-                echo "Open http://localhost:9000/hooks/logo in your browser and refresh for new logos"
-                ${pkgs.webhook}/bin/webhook -hooks /tmp/hooks.json -verbose -port 9000
-              '';
-            }
+
           ];
 
           # Configure devshell welcome

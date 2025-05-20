@@ -6,6 +6,7 @@ use crate::Result;
 use color::ColorManager;
 use grid::TriangularGrid;
 use shape::{Shape, ShapeGenerator};
+use std::collections::HashSet;
 
 // Re-export Theme enum for use in other modules
 pub use color::Theme;
@@ -93,19 +94,48 @@ impl Generator {
             let mut shape_generator = ShapeGenerator::new(grid, self.seed);
 
             if self.allow_overlap && self.shapes_count >= 2 {
-                // Generate overlapping shapes (like the original logo generator)
+                // Generate overlapping shapes with improved algorithms
                 
-                // Get two colors plus a blend color for the overlap
-                let (color1, color2, blend) = color_manager.get_colors_with_blend();
+                // Get colors with high contrast
+                let available_colors = color_manager.get_random_colors(self.palette_size());
                 
-                // Generate two shapes with some overlap
-                let shape1 = shape_generator.generate_angular_shape(
+                // Take the first color
+                let color1 = available_colors[0].clone();
+                
+                // Find the color with highest contrast against the first color
+                let color2 = {
+                    let mut best_color = available_colors[1].clone();
+                    let mut best_contrast = ColorManager::color_contrast(&color1, &best_color);
+                    
+                    for i in 2..available_colors.len() {
+                        let contrast = ColorManager::color_contrast(&color1, &available_colors[i]);
+                        if contrast > best_contrast {
+                            best_contrast = contrast;
+                            best_color = available_colors[i].clone();
+                        }
+                    }
+                    
+                    best_color
+                };
+                
+                // Generate the blended color for overlaps
+                let (r1, g1, b1) = ColorManager::hex_to_rgb(&color1);
+                let (r2, g2, b2) = ColorManager::hex_to_rgb(&color2);
+                
+                let blend_r = (r1 as u16 + r2 as u16) / 2;
+                let blend_g = (g1 as u16 + g2 as u16) / 2;
+                let blend_b = (b1 as u16 + b2 as u16) / 2;
+                
+                let blend = ColorManager::rgb_to_hex(blend_r as u8, blend_g as u8, blend_b as u8);
+                
+                // Generate two shapes with better aesthetics
+                let shape1 = shape_generator.generate_balanced_shape(
                     color1.clone(), 
                     self.opacity,
                     size_range.1, // Use larger size for better overlap chance
                 );
                 
-                let shape2 = shape_generator.generate_angular_shape(
+                let shape2 = shape_generator.generate_balanced_shape(
                     color2.clone(),
                     self.opacity,
                     size_range.1,
@@ -147,34 +177,96 @@ impl Generator {
                     self.shapes.push(overlap_shape);
                 }
                 
-                // Add additional shapes if needed
+                // Create a set of cells already used
+                let mut used_cells = HashSet::new();
+                for shape in &self.shapes {
+                    for &cell in &shape.cells {
+                        used_cells.insert(cell);
+                    }
+                }
+                
+                // Add additional shapes if needed with improved color selection
                 if self.shapes_count > 2 {
-                    let more_colors = color_manager.get_random_colors((self.shapes_count - 2) as usize);
+                    // Get colors for additional shapes
+                    let additional_colors_needed = (self.shapes_count - 2) as usize;
                     
-                    for color in more_colors {
-                        let shape = shape_generator.generate_angular_shape(
+                    // If there are other colors in the initial set, use those first
+                    let mut additional_colors = Vec::new();
+                    
+                    // Filter out colors we've already used
+                    let used_colors = vec![color1.clone(), color2.clone()];
+                    
+                    // Add remaining colors from available_colors
+                    for color in available_colors {
+                        if !used_colors.contains(&color) && !additional_colors.contains(&color) {
+                            additional_colors.push(color);
+                            if additional_colors.len() >= additional_colors_needed {
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // If we still need more colors, get random ones that are different from existing
+                    while additional_colors.len() < additional_colors_needed {
+                        let current_colors: Vec<String> = self.shapes.iter()
+                            .map(|s| s.color.clone())
+                            .collect();
+                        
+                        let new_color = color_manager.get_different_color(&current_colors);
+                        additional_colors.push(new_color);
+                    }
+                    
+                    // Generate the additional shapes with the selected colors
+                    for color in additional_colors {
+                        // For harmony, we'll use balanced shapes that avoid existing ones
+                        let shape = shape_generator.generate_shape_avoiding_cells(
                             color,
                             self.opacity,
                             size_range.1,
+                            &used_cells,
                         );
+                        
+                        // Update the used cells
+                        for &cell in &shape.cells {
+                            used_cells.insert(cell);
+                        }
                         
                         self.shapes.push(shape);
                     }
                 }
             } else {
-                // Use the standard algorithm without overlap
-                let colors = color_manager.get_random_colors(self.shapes_count as usize);
-
-                self.shapes = shape_generator.generate_shapes(
-                    colors,
+                // Use the improved algorithm without overlap
+                
+                // Generate shapes using intelligent color assignment
+                let mut shapes = shape_generator.generate_shapes(
+                    Vec::new(), // We'll assign colors after generation
                     self.opacity,
                     self.shapes_count as usize,
                     size_range,
                 );
+                
+                // Assign harmonious colors to avoid same-colored neighbors
+                color_manager.assign_harmonious_colors(grid, &mut shapes);
+                
+                self.shapes = shapes;
             }
         }
 
         Ok(())
+    }
+    
+    /// Determine number of colors to use based on grid size and shape count
+    fn palette_size(&self) -> usize {
+        // We want at least as many colors as shapes
+        // but also want enough colors to provide good variety
+        let base_size = self.shapes_count as usize + 2; // Add 2 for some extra variety
+        
+        // For larger grids, we may want more colors for variety
+        if self.grid_size >= 4 {
+            base_size + 2
+        } else {
+            base_size
+        }
     }
 
     pub fn grid(&self) -> Option<&TriangularGrid> {

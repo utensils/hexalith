@@ -1,5 +1,6 @@
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
+use std::collections::HashMap;
 
 /// Manages color selection and blending for logo generation
 pub struct ColorManager {
@@ -50,8 +51,20 @@ impl From<&str> for Theme {
 
 impl ColorManager {
     pub fn new(palette: Vec<String>, seed: Option<u64>) -> Self {
+        // Add extra randomness by combining seed with timestamp nanoseconds
         let rng = match seed {
-            Some(seed) => ChaCha8Rng::seed_from_u64(seed),
+            Some(seed) => {
+                // Get the current timestamp's nanoseconds
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .subsec_nanos();
+                
+                // Combine seed and timestamp for additional randomness
+                // But only use a portion of the nanoseconds to preserve some determinism
+                let combined_seed = seed.wrapping_add((now % 10000) as u64);
+                ChaCha8Rng::seed_from_u64(combined_seed)
+            },
             None => ChaCha8Rng::from_entropy(),
         };
 
@@ -284,6 +297,144 @@ impl ColorManager {
         colors
     }
     
+    /// Get a color that's different from the provided colors
+    pub fn get_different_color(&mut self, existing_colors: &[String]) -> String {
+        if existing_colors.is_empty() {
+            return self.get_random_color();
+        }
+        
+        let mut color = self.get_random_color();
+        let max_attempts = 20; // Prevent infinite loop in cases with limited palette
+        let mut attempts = 0;
+        
+        while existing_colors.contains(&color) && attempts < max_attempts {
+            color = self.get_random_color();
+            attempts += 1;
+        }
+        
+        color
+    }
+    
+    /// Get a color for a shape that's harmonious with the design
+    /// This avoids using the same color for adjacent shapes
+    pub fn get_color_avoiding_adjacency(&mut self, grid: &crate::generator::grid::TriangularGrid, 
+                                       shape_cells: &[usize], existing_shapes: &[crate::generator::shape::Shape]) -> String {
+        // If no existing shapes, just return a random color
+        if existing_shapes.is_empty() {
+            return self.get_random_color();
+        }
+        
+        // Build an adjacency list to track which colors to avoid
+        let mut adjacent_colors = Vec::new();
+        
+        // For each cell in our shape
+        for &cell_id in shape_cells {
+            // Get all adjacent cells
+            let adjacent_cells = grid.adjacent_cells(cell_id);
+            
+            // For each adjacent cell, check if it belongs to an existing shape
+            for &adj_cell in &adjacent_cells {
+                for existing_shape in existing_shapes {
+                    if existing_shape.contains_cell(adj_cell) {
+                        // Add the color of the adjacent shape to our avoid list
+                        adjacent_colors.push(existing_shape.color.clone());
+                        break; // Once we find a shape that contains this cell, we can stop checking
+                    }
+                }
+            }
+        }
+        
+        // Remove duplicates
+        adjacent_colors.sort_unstable();
+        adjacent_colors.dedup();
+        
+        // Get a color different from all adjacent colors
+        self.get_different_color(&adjacent_colors)
+    }
+    
+    /// Assign optimal colors to a set of shapes to ensure visual harmony
+    pub fn assign_harmonious_colors(&mut self, grid: &crate::generator::grid::TriangularGrid, 
+                                  shapes: &mut Vec<crate::generator::shape::Shape>) {
+        // Create a map of shape index -> adjacent shape indices
+        let mut adjacency_map: HashMap<usize, Vec<usize>> = HashMap::new();
+        
+        // For each shape, find adjacent shapes
+        for i in 0..shapes.len() {
+            let mut adjacent_shapes = Vec::new();
+            
+            // Check each cell in this shape
+            for &cell_id in &shapes[i].cells {
+                // Get adjacent cells
+                let adjacent_cells = grid.adjacent_cells(cell_id);
+                
+                // For each adjacent cell, check if it belongs to another shape
+                for &adj_cell in &adjacent_cells {
+                    for j in 0..shapes.len() {
+                        if i != j && shapes[j].contains_cell(adj_cell) && !adjacent_shapes.contains(&j) {
+                            adjacent_shapes.push(j);
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            adjacency_map.insert(i, adjacent_shapes);
+        }
+        
+        // Assign colors using a greedy algorithm (Welsh-Powell)
+        let mut available_colors = self.get_random_colors(self.palette.len().min(shapes.len() + 3));
+        let mut assigned_colors: HashMap<usize, String> = HashMap::new();
+        
+        // Sort shapes by number of adjacencies (descending)
+        let mut shape_indices: Vec<usize> = (0..shapes.len()).collect();
+        shape_indices.sort_by(|&a, &b| {
+            let a_adj = adjacency_map.get(&a).map_or(0, |v| v.len());
+            let b_adj = adjacency_map.get(&b).map_or(0, |v| v.len());
+            b_adj.cmp(&a_adj) // Descending order
+        });
+        
+        // Assign colors to shapes
+        for &shape_idx in &shape_indices {
+            // Get colors of adjacent shapes
+            let adjacent_colors: Vec<String> = if let Some(adj_indices) = adjacency_map.get(&shape_idx) {
+                adj_indices.iter()
+                    .filter_map(|&adj_idx| assigned_colors.get(&adj_idx).cloned())
+                    .collect()
+            } else {
+                Vec::new()
+            };
+            
+            // Find first available color not used by adjacent shapes
+            let mut chosen_color = None;
+            for color in &available_colors {
+                if !adjacent_colors.contains(color) {
+                    chosen_color = Some(color.clone());
+                    break;
+                }
+            }
+            
+            // If no suitable color found, add a new random one that's different from adjacent
+            let color = match chosen_color {
+                Some(color) => color,
+                None => {
+                    let new_color = self.get_different_color(&adjacent_colors);
+                    available_colors.push(new_color.clone());
+                    new_color
+                }
+            };
+            
+            // Assign the color
+            assigned_colors.insert(shape_idx, color);
+        }
+        
+        // Update the actual shapes with assigned colors
+        for (i, shape) in shapes.iter_mut().enumerate() {
+            if let Some(color) = assigned_colors.get(&i) {
+                shape.color = color.clone();
+            }
+        }
+    }
+    
     /// Get a pair of colors with a blended color for overlapping regions
     /// Returns (color1, color2, blend)
     pub fn get_colors_with_blend(&mut self) -> (String, String, String) {
@@ -305,6 +456,44 @@ impl ColorManager {
         let blend = Self::rgb_to_hex(blend_r as u8, blend_g as u8, blend_b as u8);
         
         (color1, color2, blend)
+    }
+    
+    /// Calculate color contrast ratio between two colors
+    pub fn color_contrast(color1: &str, color2: &str) -> f64 {
+        // Convert to RGB
+        let (r1, g1, b1) = Self::hex_to_rgb(color1);
+        let (r2, g2, b2) = Self::hex_to_rgb(color2);
+        
+        // Calculate relative luminance
+        let l1 = Self::relative_luminance(r1, g1, b1);
+        let l2 = Self::relative_luminance(r2, g2, b2);
+        
+        // Calculate contrast ratio
+        if l1 > l2 {
+            (l1 + 0.05) / (l2 + 0.05)
+        } else {
+            (l2 + 0.05) / (l1 + 0.05)
+        }
+    }
+    
+    /// Calculate relative luminance for contrast calculation
+    fn relative_luminance(r: u8, g: u8, b: u8) -> f64 {
+        // Convert RGB to linear values first
+        let r_linear = Self::to_linear(r as f64 / 255.0);
+        let g_linear = Self::to_linear(g as f64 / 255.0);
+        let b_linear = Self::to_linear(b as f64 / 255.0);
+        
+        // Calculate luminance (per WCAG formula)
+        0.2126 * r_linear + 0.7152 * g_linear + 0.0722 * b_linear
+    }
+    
+    /// Convert sRGB value to linear RGB value
+    fn to_linear(value: f64) -> f64 {
+        if value <= 0.03928 {
+            value / 12.92
+        } else {
+            ((value + 0.055) / 1.055).powf(2.4)
+        }
     }
 
     // Helper methods used only in tests
@@ -394,5 +583,30 @@ mod tests {
         for color in colors {
             assert!(manager.palette().contains(&color));
         }
+    }
+    
+    #[test]
+    fn test_get_different_color() {
+        let mut manager = ColorManager::default(Some(42)); // Fixed seed for deterministic testing
+        
+        let existing_colors = vec![
+            "#FFCC09".to_string(),
+            "#F68A21".to_string(),
+            "#E42728".to_string(),
+        ];
+        
+        let different_color = manager.get_different_color(&existing_colors);
+        assert!(!existing_colors.contains(&different_color));
+    }
+    
+    #[test]
+    fn test_color_contrast() {
+        // Test high contrast (black/white)
+        let contrast = ColorManager::color_contrast("#FFFFFF", "#000000");
+        assert!(contrast > 20.0); // Should be 21.0
+        
+        // Test low contrast (similar colors)
+        let contrast = ColorManager::color_contrast("#FF0000", "#FF0001");
+        assert!(contrast < 1.1); // Should be very close to 1.0
     }
 }

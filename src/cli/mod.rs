@@ -34,8 +34,8 @@ pub struct Cli {
     #[arg(short = 'n', long, default_value_t = 3)]
     pub shapes: u8,
 
-    /// Grid density (3-8)
-    #[arg(short, long, default_value_t = 6)]
+    /// Grid density (2-8)
+    #[arg(short, long, default_value_t = 2)]
     pub grid_size: u8,
 
     /// Shape opacity
@@ -53,6 +53,10 @@ pub struct Cli {
     /// Output format
     #[arg(short, long, value_enum, default_value_t = Format::Svg)]
     pub format: Format,
+
+    /// Allow shapes to overlap with blended colors
+    #[arg(long)]
+    pub overlap: bool,
 
     /// Enable verbose output
     #[arg(short, long)]
@@ -94,7 +98,8 @@ pub fn run() -> Result<()> {
 
     // Set up the generator
     let mut generator = Generator::new(cli.grid_size, cli.shapes, cli.opacity, seed);
-    generator.set_color_scheme(&cli.colors);
+    generator.set_color_scheme(&cli.colors)
+             .set_allow_overlap(cli.overlap);
 
     // Generate the logo
     generator.generate()?;
@@ -143,6 +148,7 @@ pub fn run() -> Result<()> {
         println!("  Grid size: {}", cli.grid_size);
         println!("  Shapes: {}", cli.shapes);
         println!("  Opacity: {}", cli.opacity);
+        println!("  Overlap: {}", if cli.overlap { "enabled" } else { "disabled" });
         println!("  {}", seed_info);
     }
 

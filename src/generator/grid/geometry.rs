@@ -88,11 +88,11 @@ impl HexGrid {
     /// Creates a new hexagonal grid with the specified parameters
     ///
     /// * `size` - The size of the hexagon (distance from center to any vertex)
-    /// * `grid_density` - Controls how finely the hexagon is divided (should be 3-8)
+    /// * `grid_density` - Controls how finely the hexagon is divided (should be 2-8)
     /// * `center` - The center point of the hexagon
     pub fn new(size: f64, grid_density: u8, center: Point) -> Self {
         // Ensure grid density is within acceptable range
-        let grid_density = grid_density.clamp(3, 8);
+        let grid_density = grid_density.clamp(2, 8);
 
         // Generate the 6 vertices of the regular hexagon
         let mut vertices = Vec::with_capacity(6);

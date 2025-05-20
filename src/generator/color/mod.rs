@@ -20,14 +20,24 @@ impl ColorManager {
     pub fn default(seed: Option<u64>) -> Self {
         Self::new(
             vec![
+                // Original hexagonal logo generator colors
+                "#FFCC09".to_string(), // Yellow
+                "#F68A21".to_string(), // Orange
+                "#E42728".to_string(), // Red
+                "#E81F6F".to_string(), // Magenta
+                "#BD3D93".to_string(), // Pink
+                "#71459B".to_string(), // Purple
+                "#4D499C".to_string(), // Dark Blue
+                "#3960A9".to_string(), // Medium Blue
+                "#20B7E8".to_string(), // Light Blue
+                "#46B78C".to_string(), // Teal
+                "#49B650".to_string(), // Green
+                "#78BF44".to_string(), // Light Green
+                // Google colors for consistency with previous version
                 "#4285F4".to_string(), // Google Blue
                 "#EA4335".to_string(), // Google Red
                 "#FBBC05".to_string(), // Google Yellow
                 "#34A853".to_string(), // Google Green
-                "#9C27B0".to_string(), // Purple
-                "#00BCD4".to_string(), // Cyan
-                "#FF9800".to_string(), // Orange
-                "#607D8B".to_string(), // Blue Grey
             ],
             seed,
         )
@@ -49,6 +59,29 @@ impl ColorManager {
         }
         colors
     }
+    
+    /// Get a pair of colors with a blended color for overlapping regions
+    /// Returns (color1, color2, blend)
+    pub fn get_colors_with_blend(&mut self) -> (String, String, String) {
+        // Get two distinct random colors
+        let color1 = self.get_random_color();
+        let mut color2 = self.get_random_color();
+        while color2 == color1 {
+            color2 = self.get_random_color();
+        }
+        
+        // Create a blended color by averaging the RGB values
+        let (r1, g1, b1) = Self::hex_to_rgb(&color1);
+        let (r2, g2, b2) = Self::hex_to_rgb(&color2);
+        
+        let blend_r = (r1 as u16 + r2 as u16) / 2;
+        let blend_g = (g1 as u16 + g2 as u16) / 2;
+        let blend_b = (b1 as u16 + b2 as u16) / 2;
+        
+        let blend = Self::rgb_to_hex(blend_r as u8, blend_g as u8, blend_b as u8);
+        
+        (color1, color2, blend)
+    }
 
     // Helper methods used only in tests
     #[cfg(test)]
@@ -56,7 +89,6 @@ impl ColorManager {
         &self.palette
     }
 
-    #[cfg(test)]
     pub fn hex_to_rgb(hex: &str) -> (u8, u8, u8) {
         let hex = hex.trim_start_matches('#');
 
@@ -67,12 +99,11 @@ impl ColorManager {
         (r, g, b)
     }
 
-    #[cfg(test)]
     pub fn rgb_to_hex(r: u8, g: u8, b: u8) -> String {
         format!("#{:02X}{:02X}{:02X}", r, g, b)
     }
 
-    #[cfg(test)]
+    /// Blend two colors together with a given opacity
     pub fn blend_colors(color1: &str, color2: &str, opacity: f32) -> String {
         let (r1, g1, b1) = Self::hex_to_rgb(color1);
         let (r2, g2, b2) = Self::hex_to_rgb(color2);

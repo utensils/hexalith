@@ -15,23 +15,30 @@ pub struct Generator {
     grid: Option<TriangularGrid>,
     shapes: Vec<Shape>,
     color_scheme: String,
+    allow_overlap: bool,
 }
 
 impl Generator {
     pub fn new(grid_size: u8, shapes_count: u8, opacity: f32, seed: Option<u64>) -> Self {
         Self {
-            grid_size: grid_size.clamp(3, 8),
+            grid_size: grid_size.clamp(2, 8),
             shapes_count: shapes_count.clamp(1, 10),
             opacity: opacity.clamp(0.0, 1.0),
             seed,
             grid: None,
             shapes: Vec::new(),
             color_scheme: "default".to_string(),
+            allow_overlap: false,
         }
     }
 
     pub fn set_color_scheme(&mut self, color_scheme: &str) -> &mut Self {
         self.color_scheme = color_scheme.to_string();
+        self
+    }
+    
+    pub fn set_allow_overlap(&mut self, allow_overlap: bool) -> &mut Self {
+        self.allow_overlap = allow_overlap;
         self
     }
 
@@ -48,20 +55,108 @@ impl Generator {
             // Calculate shape size based on grid density
             // Higher density = smaller shapes
             let total_cells = grid.cell_count();
-            let min_size = (total_cells as f32 * 0.01).round() as usize;
-            let max_size = (total_cells as f32 * 0.05).round() as usize;
-            let size_range = (min_size.max(3), max_size.max(min_size + 2));
+            
+            // With grid density of 2, we have exactly 24 cells, like the original logo generator
+            // Let's adjust our size range to work well with both small and large grid densities
+            let min_size = if self.grid_size <= 2 {
+                // For grid_size 2 (24 cells total), use 2-5 cells per shape
+                2
+            } else {
+                (total_cells as f32 * 0.01).round() as usize
+            };
+            
+            let max_size = if self.grid_size <= 2 {
+                // For grid_size 2, limit the max size to keep multiple shapes visible
+                5.min(total_cells / self.shapes_count as usize)
+            } else {
+                (total_cells as f32 * 0.05).round() as usize
+            };
+            
+            let size_range = (min_size, max_size.max(min_size + 1));
 
             // Generate the shapes
             let mut shape_generator = ShapeGenerator::new(grid, self.seed);
-            let colors = color_manager.get_random_colors(self.shapes_count as usize);
 
-            self.shapes = shape_generator.generate_shapes(
-                colors,
-                self.opacity,
-                self.shapes_count as usize,
-                size_range,
-            );
+            if self.allow_overlap && self.shapes_count >= 2 {
+                // Generate overlapping shapes (like the original logo generator)
+                
+                // Get two colors plus a blend color for the overlap
+                let (color1, color2, blend) = color_manager.get_colors_with_blend();
+                
+                // Generate two shapes with some overlap
+                let shape1 = shape_generator.generate_angular_shape(
+                    color1.clone(), 
+                    self.opacity,
+                    size_range.1, // Use larger size for better overlap chance
+                );
+                
+                let shape2 = shape_generator.generate_angular_shape(
+                    color2.clone(),
+                    self.opacity,
+                    size_range.1,
+                );
+                
+                // Find overlapping cells
+                let mut overlap_cells = Vec::new();
+                let mut overlap_shape = Shape::new(blend, self.opacity);
+                
+                for &cell1 in &shape1.cells {
+                    if shape2.cells.contains(&cell1) {
+                        overlap_cells.push(cell1);
+                        overlap_shape.add_cell(cell1);
+                    }
+                }
+                
+                // Add the shapes to our collection
+                // First add non-overlapping parts of each shape
+                let mut shape1_no_overlap = Shape::new(color1.clone(), self.opacity);
+                let mut shape2_no_overlap = Shape::new(color2.clone(), self.opacity);
+                
+                for &cell in &shape1.cells {
+                    if !overlap_cells.contains(&cell) {
+                        shape1_no_overlap.add_cell(cell);
+                    }
+                }
+                
+                for &cell in &shape2.cells {
+                    if !overlap_cells.contains(&cell) {
+                        shape2_no_overlap.add_cell(cell);
+                    }
+                }
+                
+                self.shapes.push(shape1_no_overlap);
+                self.shapes.push(shape2_no_overlap);
+                
+                // Only add the overlap if it's not empty
+                if !overlap_cells.is_empty() {
+                    self.shapes.push(overlap_shape);
+                }
+                
+                // Add additional shapes if needed
+                if self.shapes_count > 2 {
+                    let more_colors = color_manager.get_random_colors((self.shapes_count - 2) as usize);
+                    
+                    for color in more_colors {
+                        let shape = shape_generator.generate_angular_shape(
+                            color,
+                            self.opacity,
+                            size_range.1,
+                        );
+                        
+                        self.shapes.push(shape);
+                    }
+                }
+            } else {
+                // Use the standard algorithm without overlap
+                let colors = color_manager.get_random_colors(self.shapes_count as usize);
+
+                self.shapes = shape_generator.generate_shapes(
+                    colors,
+                    self.opacity,
+                    self.shapes_count as usize,
+                    size_range,
+                );
+            }
         }
 
         Ok(())

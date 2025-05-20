@@ -51,6 +51,62 @@ impl<'a> ShapeGenerator<'a> {
         Self { grid, rng }
     }
 
+    /// Generates a more angular shape, similar to the original hexagonal logo generator
+    pub fn generate_angular_shape(
+        &mut self,
+        color: String,
+        opacity: f32,
+        target_size: usize,
+    ) -> Shape {
+        let mut shape = Shape::new(color, opacity);
+        let total_cells = self.grid.cell_count();
+        
+        if total_cells == 0 || target_size == 0 {
+            return shape;
+        }
+        
+        // Choose a starting cell closer to the center
+        let center_cells = self.find_center_cells();
+        let start_cell = center_cells[self.rng.gen_range(0..center_cells.len())];
+        shape.add_cell(start_cell);
+        
+        // Maximum attempts to reach target size
+        let max_attempts = target_size * 3;
+        let mut attempts = 0;
+        
+        // Keep track of adjacent cells we've considered
+        let mut frontier = self.grid.adjacent_cells(start_cell);
+        
+        // For angular shapes, prefer to grow in specific directions rather than randomly
+        while shape.cell_count() < target_size && !frontier.is_empty() && attempts < max_attempts {
+            attempts += 1;
+            
+            // Choose a cell from the frontier
+            let idx = self.rng.gen_range(0..frontier.len());
+            let next_cell = frontier.remove(idx);
+            
+            // Add the cell to the shape
+            if !shape.contains_cell(next_cell) {
+                shape.add_cell(next_cell);
+                
+                // Add its adjacent cells to the frontier if they're not already in the shape
+                for adj_id in self.grid.adjacent_cells(next_cell) {
+                    if !shape.contains_cell(adj_id) && !frontier.contains(&adj_id) {
+                        frontier.push(adj_id);
+                    }
+                }
+                
+                // For angular shapes, periodically skip cells to create more angles
+                if self.rng.gen::<f32>() < 0.2 && !frontier.is_empty() {
+                    let skip_idx = self.rng.gen_range(0..frontier.len());
+                    frontier.remove(skip_idx);
+                }
+            }
+        }
+        
+        shape
+    }
+    
     /// Generates a random shape starting from a random cell
     pub fn generate_random_shape(
         &mut self,

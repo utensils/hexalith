@@ -24,6 +24,11 @@ impl TriangularGrid {
     fn generate_triangular_cells(hex_grid: &HexGrid) -> Vec<Cell> {
         let n = hex_grid.grid_density as usize;
         let mut cells = Vec::with_capacity(hex_grid.expected_cell_count());
+        
+        // Special case for grid_density=2, generate a grid similar to the original 24-triangle layout
+        if n == 2 {
+            return Self::generate_original_style_grid(hex_grid);
+        }
 
         // We'll divide the hexagon into 6 triangular sectors (center to each vertex pair)
         // and then further subdivide each sector
@@ -115,6 +120,59 @@ impl TriangularGrid {
     /// Returns a mutable reference to the underlying hexagonal grid
     pub fn hex_grid_mut(&mut self) -> &mut HexGrid {
         &mut self.hex_grid
+    }
+    
+    /// Generates a grid with exactly 24 triangles, similar to the original hexagonal logo generator
+    fn generate_original_style_grid(hex_grid: &HexGrid) -> Vec<Cell> {
+        let size = hex_grid.size;
+        let center = hex_grid.center;
+        let mut cells = Vec::with_capacity(24); // Exactly 24 triangles
+        
+        // Helper function to create a point at specific angle and distance
+        let point_at = |angle: f64, distance: f64| -> Point {
+            let rad_angle = angle * std::f64::consts::PI / 180.0;
+            let x = center.x + distance * rad_angle.cos();
+            let y = center.y + distance * rad_angle.sin();
+            Point::new(x, y)
+        };
+        
+        let inner_distance = size * 0.5; // Distance to inner points
+        
+        // Generate the 6 points at the inner hexagon corners
+        let mut inner_points = Vec::with_capacity(6);
+        for i in 0..6 {
+            let angle = i as f64 * 60.0; // 60 degrees per hexagon corner
+            inner_points.push(point_at(angle, inner_distance));
+        }
+        
+        // Create the 24 triangles (4 per sector)
+        let mut id = 0;
+        
+        for sector in 0..6 {
+            let v1 = hex_grid.vertices[sector];
+            let v2 = hex_grid.vertices[(sector + 1) % 6];
+            
+            let inner1 = inner_points[sector];
+            let inner2 = inner_points[(sector + 1) % 6];
+            
+            // Center to inner point 1
+            cells.push(Cell::new(id, [center, inner1, inner2]));
+            id += 1;
+            
+            // Inner point 1 to vertex 1
+            cells.push(Cell::new(id, [inner1, v1, v2]));
+            id += 1;
+            
+            // Inner point 1 to inner point 2, to vertex 2
+            cells.push(Cell::new(id, [inner1, inner2, v2]));
+            id += 1;
+            
+            // Inner point 2 to center, to inner point 1
+            cells.push(Cell::new(id, [inner2, center, inner1]));
+            id += 1;
+        }
+        
+        cells
     }
 
     /// Gets the triangular cell at the specified index

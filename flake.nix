@@ -195,7 +195,7 @@
                 OPACITY=$(awk -v min=0.5 -v max=1.0 'BEGIN{srand(); print min+rand()*(max-min)}')
                 
                 # Run the logo generator, redirecting build output to /dev/null
-                ${rustToolchain}/bin/cargo run --quiet -- --grid-size $GRID_SIZE --shapes $SHAPES --opacity $OPACITY --format svg "$OUTPUT_FILE" 2>/dev/null
+                ${rustToolchain}/bin/cargo run --quiet -- --format svg "$OUTPUT_FILE" 2>/dev/null
                 
                 # Output the SVG content with XML declaration
                 if [ -f "$OUTPUT_FILE" ] && [ -s "$OUTPUT_FILE" ]; then

@@ -49,6 +49,7 @@
           cargo-watch
           cargo-edit
           nixpkgs-fmt
+          webhook
         ];
 
       in rec {
@@ -144,6 +145,81 @@
               category = "build";
               help = "Build for release";
               command = "${rustToolchain}/bin/cargo build --release";
+            }
+            {
+              name = "serve-logo";
+              category = "hexalith";
+              help = "Start a webhook server to serve random logos in the browser";
+              command = ''
+                # Create hooks.json configuration file
+                cat > /tmp/hooks.json << 'EOF'
+                [
+                  {
+                    "id": "logo",
+                    "execute-command": "/tmp/generate_logo.sh",
+                    "command-working-directory": "/tmp",
+                    "pass-arguments-to-command": [],
+                    "response-headers": [
+                      {
+                        "name": "Content-Type",
+                        "value": "image/svg+xml"
+                      }
+                    ],
+                    "include-command-output-in-response": true,
+                    "response-message": ""
+                  }
+                ]
+                EOF
+                
+                # Create the logo generation script
+                cat > /tmp/generate_logo.sh << 'EOF'
+                #!/bin/sh
+                # Generate random parameters
+                GRID_SIZE=$(( RANDOM % 8 + 3 ))  # Random grid size between 3-10
+                SHAPES=$(( RANDOM % 5 + 1 ))     # Random shapes between 1-5
+                OPACITY=$(awk -v min=0.5 -v max=1.0 'BEGIN{srand(); print min+rand()*(max-min)}')
+                
+                # Create a temporary directory for the cargo run
+                TEMP_DIR=$(mktemp -d)
+                cd "$TEMP_DIR"
+                
+                # Copy the project to the temporary directory
+                cp -r ${toString ./.}/* .
+                
+                # Generate a random logo with our Rust application
+                OUTPUT_FILE="/tmp/logo_output.svg"
+                
+                # Generate random parameters for a unique logo each time
+                GRID_SIZE=$(( RANDOM % 8 + 3 ))  # Random grid size between 3-10
+                SHAPES=$(( RANDOM % 5 + 1 ))     # Random shapes between 1-5
+                OPACITY=$(awk -v min=0.5 -v max=1.0 'BEGIN{srand(); print min+rand()*(max-min)}')
+                
+                # Run the logo generator, redirecting build output to /dev/null
+                ${rustToolchain}/bin/cargo run --quiet -- --grid-size $GRID_SIZE --shapes $SHAPES --opacity $OPACITY --format svg "$OUTPUT_FILE" 2>/dev/null
+                
+                # Output the SVG content with XML declaration
+                if [ -f "$OUTPUT_FILE" ] && [ -s "$OUTPUT_FILE" ]; then
+                  # Add XML declaration if it's missing
+                  if ! grep -q '<?xml' "$OUTPUT_FILE"; then
+                    echo '<?xml version="1.0" encoding="UTF-8"?>'
+                  fi
+                  cat "$OUTPUT_FILE"
+                else
+                  # Fallback SVG if generation fails
+                  echo '<?xml version="1.0" encoding="UTF-8"?>'
+                  echo '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">'
+                  echo '  <rect width="200" height="200" fill="#f0f0f0"/>'
+                  echo '  <text x="20" y="100" font-family="Arial" font-size="14">Logo generation failed</text>'
+                  echo '</svg>'
+                fi
+                EOF
+                
+                chmod +x /tmp/generate_logo.sh
+                
+                echo "Starting webhook server on port 9000..."
+                echo "Open http://localhost:9000/hooks/logo in your browser and refresh for new logos"
+                ${pkgs.webhook}/bin/webhook -hooks /tmp/hooks.json -verbose -port 9000
+              '';
             }
           ];
 

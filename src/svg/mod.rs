@@ -4,7 +4,7 @@ use crate::Result;
 use std::fs;
 use std::path::Path;
 use svg::node::element::path::Data;
-use svg::node::element::{Path as SvgPath, Polygon};
+use svg::node::element::Path as SvgPath;
 use svg::Document;
 
 /// Converts the generator output to SVG format
@@ -20,9 +20,7 @@ pub fn generate_svg(generator: &Generator, width: u32, height: u32) -> Result<St
         .set("width", width)
         .set("height", height);
 
-    // Add the hexagonal boundary
-    let boundary = create_hexagon_boundary(grid);
-    document = document.add(boundary);
+    // We don't add the hexagonal boundary anymore to avoid having a border
 
     // Create a group for each shape
     for shape in generator.shapes() {
@@ -40,24 +38,7 @@ pub fn generate_svg(generator: &Generator, width: u32, height: u32) -> Result<St
     Ok(document.to_string())
 }
 
-/// Creates the hexagonal boundary path
-fn create_hexagon_boundary(grid: &TriangularGrid) -> Polygon {
-    let hex_grid = grid.hex_grid();
-
-    // Convert vertices to a polygon string
-    let points = hex_grid
-        .vertices
-        .iter()
-        .map(|v| format!("{},{}", v.x, v.y))
-        .collect::<Vec<String>>()
-        .join(" ");
-
-    Polygon::new()
-        .set("points", points)
-        .set("fill", "none")
-        .set("stroke", "#CCCCCC")
-        .set("stroke-width", "1")
-}
+// No hexagon boundary is drawn in the SVG to avoid having a border
 
 /// Creates an SVG path for a shape made up of triangular cells
 fn create_shape_path(grid: &TriangularGrid, cell_ids: &[usize]) -> Data {

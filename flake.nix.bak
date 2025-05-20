@@ -120,7 +120,7 @@
             {
               name = "rs-coverage";
               category = "development";
-              help = "Generate coverage report and open in browser";
+              help = "Generate and display code coverage report";
               command = ''
                 # Clean up previous runs
                 rm -rf ./target/coverage/
@@ -133,24 +133,35 @@
                 export LLVM_PROFILE_FILE="hexalith-%p-%m.profraw"
                 
                 # Run tests to generate coverage data
-                echo "Running tests to generate coverage data..."
-                ${rustToolchain}/bin/cargo test
+                ${rustToolchain}/bin/cargo test --quiet
+                
+                # Print coverage summary to console
+                echo "\nCOVERAGE SUMMARY\n"
+                
+                # Generate summary info directly with grcov
+                ${pkgs.grcov}/bin/grcov . --binary-path ./target/debug/ \
+                  -t lcov --output-path ./target/lcov.info \
+                  --branch --ignore-not-existing \
+                  --keep-only "src/*" \
+                  --excl-start "mod tests \\{" --excl-stop "\\}" \
+                  --excl-line "(#\\[derive\\\\()|(#\\[cfg\\\\(test\\\\)\\])" \
+                  2>/dev/null
+                
+                # Convert LCOV to summary text
+                ${pkgs.lcov}/bin/lcov --summary ./target/lcov.info 2>&1 | grep -v "Reading" | grep -v "Found" | grep -v "warning:"
+                
+                # Generate HTML report (more detailed)
+                ${pkgs.grcov}/bin/grcov . --binary-path ./target/debug/ --source-dir ./src/ \
+                  --output-path ./target/coverage/ --output-type html \
+                  --ignore-not-existing --branch \
+                  --excl-start "mod tests \{" --excl-stop "\}" \
+                  --excl-line "(#\[derive\\()|(#\[cfg\\(test\\)\])" \
+                  --ignore "*/tests/*" \
+                  --ignore "*/.cargo/*" \
+                  --keep-only "src/*" \
+                  2>/dev/null || true
 
-                # Generate HTML report
-                echo "Generating coverage report..."
-                ${pkgs.grcov}/bin/grcov . \
-                  --binary-path ./target/debug/deps/ \
-                  --source-dir . \
-                  --output-path ./target/coverage/ \
-                  --output-type html \
-                  --branch \
-                  --ignore "target/*" \
-                  --ignore "tests/*" \
-                  --ignore-not-existing
-
-                echo "Coverage report available at ./target/coverage/html/index.html"
-                echo "Opening coverage report in browser..."
-                open ./target/coverage/html/index.html 2>/dev/null || xdg-open ./target/coverage/html/index.html 2>/dev/null || true
+                echo "\nHTML coverage report available at ./target/coverage/index.html"
                 
                 # Clean up
                 find . -name "*.profraw" -delete
@@ -180,6 +191,7 @@
               help = "Build for release";
               command = "${rustToolchain}/bin/cargo build --release";
             }
+
           ];
 
           # Configure devshell welcome

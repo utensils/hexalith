@@ -125,7 +125,7 @@
               name = "fmt";
               category = "development";
               help = "Format code";
-              command = "cargo fmt";
+              command = "${pkgs.rustfmt}/bin/rustfmt $(find src examples -name '*.rs')";
             }
             {
               name = "check";
@@ -147,10 +147,13 @@
             }
           ];
 
-          # Configure devshell's welcome message
+          # Configure devshell welcome and menu
           motd = ''
             🦀 Hexalith - Modern geometric logo generator in Rust
           '';
+          
+          # Enable the menu
+          menu.enable = true;
         };
 
         packages.default = pkgs.rustPlatform.buildRustPackage {

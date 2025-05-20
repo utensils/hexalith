@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use super::geometry::{HexGrid, Point};
-    use super::triangular::TriangularGrid;
+    use crate::generator::grid::geometry::{HexGrid, Point};
+    use crate::generator::grid::triangular::TriangularGrid;
     
     #[test]
     fn test_hexagon_creation() {

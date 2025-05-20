@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::utils::{uuid_to_seed, default_color_palette};
     
     #[test]
     fn test_uuid_to_seed() {

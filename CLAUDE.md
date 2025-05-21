@@ -42,6 +42,20 @@ hexalith/
 
 [... rest of the existing content remains the same ...]
 
+## Nix Configuration
+
+The project includes a Nix flake setup that supports:
+
+1. Development environment via `nix develop`
+2. Direct usage via `nix run github:utensils/hexalith` (CLI)
+3. Direct web interface usage via `nix run github:utensils/hexalith#web`
+
+The flake uses a rustup-based approach for maximum compatibility across environments. The implementation:
+- Creates temporary directories for clean builds
+- Sets up an isolated rustup environment
+- Avoids compatibility issues with Rust compiler flags
+- Preserves all command line options when running via `nix run`
+
 ## Project Guidelines
 
 - Never make backup files, we use git so they are never needed

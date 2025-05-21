@@ -30,10 +30,19 @@ Hexalith (HexLogoGen) is a command-line tool that generates random, geometric lo
 cargo install hexlogogen
 ```
 
-### Using Nix Flakes
+### Using Nix Flakes (No Installation Required)
+
+You can run Hexalith directly without installation using Nix:
 
 ```bash
+# Run the CLI tool to generate a logo
 nix run github:utensils/hexalith
+
+# Run with specific options
+nix run github:utensils/hexalith -- --theme blues --verbose logo.svg
+
+# Run the web interface
+nix run github:utensils/hexalith#web
 ```
 
 ## Usage
@@ -117,8 +126,11 @@ To run the web interface:
 # Using cargo
 cargo run --bin hexweb
 
-# Using nix
+# Using nix develop
 nix develop -c web-run
+
+# Without installing (using nix run)
+nix run github:utensils/hexalith#web
 ```
 
 This will start a web server at http://localhost:3000 where you can:

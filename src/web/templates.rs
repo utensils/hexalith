@@ -2,15 +2,14 @@ use maud::{html, Markup};
 
 pub fn index_page() -> Markup {
     html! {
-        DOCTYPE HTML
+        (maud::DOCTYPE)
         html lang="en" {
             head {
-                meta charset="utf-8"
-                meta name="viewport" content="width=device-width, initial-scale=1.0"
-                link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"
+                meta charset="utf-8";
+                meta name="viewport" content="width=device-width, initial-scale=1.0";
+                link rel="icon" href="/assets/favicon.svg" type="image/svg+xml";
                 title { "Hexalith Logo Generator" }
-                style {
-                    r#"
+                style { r#"
                     body {
                         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
                         line-height: 1.6;
@@ -155,7 +154,7 @@ pub fn index_page() -> Markup {
                     h1 { "Hexalith Logo Generator" }
                     p { "Create unique hexagonal designs with minimal configuration" }
                 }
-                
+
                 div class="container" {
                     div class="controls" {
                         form id="logo-form" {
@@ -171,7 +170,7 @@ pub fn index_page() -> Markup {
                                     option value="rainbow" { "Rainbow" }
                                 }
                             }
-                            
+
                             div class="form-group" {
                                 label for="grid-size" { "Grid Density (2-8)" }
                                 div class="range-group" {
@@ -179,7 +178,7 @@ pub fn index_page() -> Markup {
                                     span id="grid-size-value" class="range-value" { "2" }
                                 }
                             }
-                            
+
                             div class="form-group" {
                                 label for="shapes" { "Number of Shapes (1-10)" }
                                 div class="range-group" {
@@ -187,7 +186,7 @@ pub fn index_page() -> Markup {
                                     span id="shapes-value" class="range-value" { "3" }
                                 }
                             }
-                            
+
                             div class="form-group" {
                                 label for="opacity" { "Opacity (0.0-1.0)" }
                                 div class="range-group" {
@@ -195,21 +194,21 @@ pub fn index_page() -> Markup {
                                     span id="opacity-value" class="range-value" { "0.8" }
                                 }
                             }
-                            
+
                             div class="form-group checkbox-group" {
                                 input type="checkbox" id="overlap" name="overlap" checked {}
                                 label for="overlap" { "Allow shape overlap" }
                             }
-                            
+
                             input type="hidden" id="seed" name="seed" value="" {}
-                            
+
                             div class="button-group" {
                                 button type="button" id="generate-btn" { "Generate Random" }
                                 button type="button" id="download-btn" class="button-secondary" { "Download SVG" }
                             }
                         }
                     }
-                    
+
                     div class="preview" {
                         div class="logo-container" {
                             img id="logo-preview" src="" alt="Generated logo will appear here" {}
@@ -219,36 +218,38 @@ pub fn index_page() -> Markup {
                         }
                     }
                 }
-                
+
                 div class="history" {
                     h2 { "Recent Logos" }
-                    div id="history-grid" class="history-grid" {
-                        // History will be populated by JavaScript
-                    }
+                    div id="history-grid" class="history-grid" {}
                 }
-                
+
                 footer {
                     p { "Hexalith Logo Generator | Created with 🦀 Rust | " a href="https://github.com/utensils/hexalith" { "GitHub Repository" } }
                 }
-                
-                script {
-                    r#"
+
+                script { r#"
                     // Store recent logos in local storage
                     let recentLogos = JSON.parse(localStorage.getItem('hexalith_recent_logos') || '[]');
                     const MAX_HISTORY = 20;
                     
+                    // Function to update range value displays
+                    function updateRangeValue(rangeInput, valueId, decimals = 0) {
+                        const value = parseFloat(rangeInput.value);
+                        document.getElementById(valueId).textContent = value.toFixed(decimals);
+                    }
+                    
                     // Initialize the page
                     document.addEventListener('DOMContentLoaded', function() {
-                        // Show logos from history
-                        updateHistoryGrid();
-                        
                         // Set up range input event listeners
                         document.getElementById('grid-size').addEventListener('input', function() {
                             updateRangeValue(this, 'grid-size-value', 0);
                         });
+                        
                         document.getElementById('shapes').addEventListener('input', function() {
                             updateRangeValue(this, 'shapes-value', 0);
                         });
+                        
                         document.getElementById('opacity').addEventListener('input', function() {
                             updateRangeValue(this, 'opacity-value', 1);
                         });
@@ -257,15 +258,14 @@ pub fn index_page() -> Markup {
                         document.getElementById('generate-btn').addEventListener('click', generateLogo);
                         document.getElementById('download-btn').addEventListener('click', downloadSvg);
                         
+                        // Show logos from history
+                        updateHistoryGrid();
+                        
                         // Generate a random logo on page load
                         setTimeout(generateLogo, 100);
                     });
                     
-                    function updateRangeValue(rangeInput, valueId, decimals = 0) {
-                        const value = parseFloat(rangeInput.value);
-                        document.getElementById(valueId).textContent = value.toFixed(decimals);
-                    }
-                    
+                    // Generate a logo
                     async function generateLogo() {
                         const form = document.getElementById('logo-form');
                         const formData = new FormData(form);
@@ -278,11 +278,14 @@ pub fn index_page() -> Markup {
                                 params[key] = parseInt(value, 10);
                             } else if (key === 'opacity') {
                                 params[key] = parseFloat(value);
-                            } else if (key === 'overlap') {
-                                params[key] = value === 'on';
-                            } else {
+                            } else if (key !== 'overlap') { // Skip overlap for now
                                 params[key] = value;
                             }
+                        }
+                        
+                        // Handle overlap separately - this is the key fix that works
+                        if (document.getElementById('overlap').checked) {
+                            params.overlap = true;
                         }
                         
                         console.log('Form parameters:', params);
@@ -292,9 +295,9 @@ pub fn index_page() -> Markup {
                             const response = await fetch('/generate', {
                                 method: 'POST',
                                 headers: {
-                                    'Content-Type': 'application/json',
+                                    'Content-Type': 'application/json'
                                 },
-                                body: JSON.stringify(params),
+                                body: JSON.stringify(params)
                             });
                             
                             if (!response.ok) {
@@ -342,7 +345,7 @@ pub fn index_page() -> Markup {
                                 grid_size: params.grid_size,
                                 shapes: params.shapes,
                                 opacity: params.opacity,
-                                overlap: (params.overlap === 'on' || params.overlap === true),
+                                overlap: params.overlap === true,
                                 url: svgUrl
                             });
                             
@@ -352,6 +355,7 @@ pub fn index_page() -> Markup {
                         }
                     }
                     
+                    // Add a logo to history
                     function addToHistory(logo) {
                         // Check if this exact logo is already in history
                         const existingIndex = recentLogos.findIndex(l => l.seed === logo.seed);
@@ -375,6 +379,7 @@ pub fn index_page() -> Markup {
                         updateHistoryGrid();
                     }
                     
+                    // Update the history grid display
                     function updateHistoryGrid() {
                         const historyGrid = document.getElementById('history-grid');
                         historyGrid.innerHTML = '';
@@ -399,6 +404,7 @@ pub fn index_page() -> Markup {
                         });
                     }
                     
+                    // Load a logo from history
                     function loadLogoFromHistory(logo) {
                         // Update form values
                         document.getElementById('theme').value = logo.theme;
@@ -426,6 +432,7 @@ pub fn index_page() -> Markup {
                         `;
                     }
                     
+                    // Download the current SVG
                     function downloadSvg() {
                         const previewImg = document.getElementById('logo-preview');
                         const svgUrl = previewImg.src;

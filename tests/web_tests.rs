@@ -1,6 +1,5 @@
 use axum::{
     body::Body,
-    extract::Path,
     http::{Request, StatusCode},
 };
 use hexlogogen::generator::Generator;
@@ -117,7 +116,7 @@ async fn test_generate_handler() {
         .uri("/generate")
         .method("POST")
         .header("content-type", "application/json")
-        .body(Body::from(r#"{"theme":"mesos","grid_size":2,"shapes":3,"opacity":0.8,"overlap":"on"}"#))
+        .body(Body::from(r#"{"theme":"mesos","grid_size":2,"shapes":3,"opacity":0.8,"overlap":true}"#))
         .unwrap();
     
     // Send request to router

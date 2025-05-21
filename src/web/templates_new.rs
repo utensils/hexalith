@@ -153,7 +153,7 @@ pub fn index_page() -> Markup {
                     h1 { "Hexalith Logo Generator" }
                     p { "Create unique hexagonal designs with minimal configuration" }
                 }
-                
+
                 div class="container" {
                     div class="controls" {
                         form id="logo-form" {
@@ -169,7 +169,7 @@ pub fn index_page() -> Markup {
                                     option value="rainbow" { "Rainbow" }
                                 }
                             }
-                            
+
                             div class="form-group" {
                                 label for="grid-size" { "Grid Density (2-8)" }
                                 div class="range-group" {
@@ -177,7 +177,7 @@ pub fn index_page() -> Markup {
                                     span id="grid-size-value" class="range-value" { "2" }
                                 }
                             }
-                            
+
                             div class="form-group" {
                                 label for="shapes" { "Number of Shapes (1-10)" }
                                 div class="range-group" {
@@ -185,7 +185,7 @@ pub fn index_page() -> Markup {
                                     span id="shapes-value" class="range-value" { "3" }
                                 }
                             }
-                            
+
                             div class="form-group" {
                                 label for="opacity" { "Opacity (0.0-1.0)" }
                                 div class="range-group" {
@@ -193,21 +193,21 @@ pub fn index_page() -> Markup {
                                     span id="opacity-value" class="range-value" { "0.8" }
                                 }
                             }
-                            
+
                             div class="form-group checkbox-group" {
                                 input type="checkbox" id="overlap" name="overlap" checked {}
                                 label for="overlap" { "Allow shape overlap" }
                             }
-                            
+
                             input type="hidden" id="seed" name="seed" value="" {}
-                            
+
                             div class="button-group" {
                                 button type="button" id="generate-btn" { "Generate Random" }
                                 button type="button" id="download-btn" class="button-secondary" { "Download SVG" }
                             }
                         }
                     }
-                    
+
                     div class="preview" {
                         div class="logo-container" {
                             img id="logo-preview" src="" alt="Generated logo will appear here" {}
@@ -217,17 +217,17 @@ pub fn index_page() -> Markup {
                         }
                     }
                 }
-                
+
                 div class="history" {
                     h2 { "Recent Logos" }
                     div id="history-grid" class="history-grid" {}
                 }
-                
+
                 footer {
-                    p { "Hexalith Logo Generator | Created with 🦀 Rust | " 
+                    p { "Hexalith Logo Generator | Created with 🦀 Rust | "
                         a href="https://github.com/utensils/hexalith" { "GitHub Repository" } }
                 }
-                
+
                 script { r#"
                 // Store recent logos in local storage
                 let recentLogos = JSON.parse(localStorage.getItem('hexalith_recent_logos') || '[]');

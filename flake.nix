@@ -92,7 +92,7 @@
               help = "Generate a logo using default settings";
               command = ''
                 echo "Generating logo..."
-                ${rustToolchain}/bin/cargo run -- --format svg --verbose logo.svg
+                ${rustToolchain}/bin/cargo run --bin hexlogogen -- --format svg --verbose logo.svg
               '';
             }
             {

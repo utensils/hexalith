@@ -31,11 +31,11 @@ pub struct Cli {
     pub theme: String,
 
     /// Number of shapes to generate
-    #[arg(short = 'n', long, default_value_t = 3)]
+    #[arg(short = 'n', long, default_value_t = 4)]
     pub shapes: u8,
 
     /// Grid density (2-8)
-    #[arg(short, long, default_value_t = 2)]
+    #[arg(short, long, default_value_t = 4)]
     pub grid_size: u8,
 
     /// Shape opacity

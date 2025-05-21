@@ -157,16 +157,16 @@ async fn direct_handler() -> impl IntoResponse {
                 <div class="form-group">
                     <label for="grid-size">Grid Density (2-8)</label>
                     <div class="range-group">
-                        <input type="range" id="grid-size" name="grid_size" min="2" max="8" value="2" step="1">
-                        <span id="grid-size-value" class="range-value">2</span>
+                        <input type="range" id="grid-size" name="grid_size" min="2" max="8" value="4" step="1">
+                        <span id="grid-size-value" class="range-value">4</span>
                     </div>
                 </div>
                 
                 <div class="form-group">
                     <label for="shapes">Number of Shapes (1-10)</label>
                     <div class="range-group">
-                        <input type="range" id="shapes" name="shapes" min="1" max="10" value="3" step="1">
-                        <span id="shapes-value" class="range-value">3</span>
+                        <input type="range" id="shapes" name="shapes" min="1" max="10" value="4" step="1">
+                        <span id="shapes-value" class="range-value">4</span>
                     </div>
                 </div>
                 
@@ -499,8 +499,8 @@ async fn generate_logo_handler(
 
 async fn get_svg_handler(Path(seed): Path<u64>, Query(params): Query<LogoParams>) -> impl IntoResponse {
     // Set up the generator with the parameters from the query string
-    let grid_size = params.grid_size.unwrap_or(2);
-    let shapes = params.shapes.unwrap_or(3);
+    let grid_size = params.grid_size.unwrap_or(4);
+    let shapes = params.shapes.unwrap_or(4);
     let opacity = params.opacity.unwrap_or(0.8);
     let theme = params.theme.unwrap_or_else(|| "mesos".to_string());
     // For the direct HTML version, overlap is now a boolean

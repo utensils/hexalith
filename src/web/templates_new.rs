@@ -173,16 +173,16 @@ pub fn index_page() -> Markup {
                             div class="form-group" {
                                 label for="grid-size" { "Grid Density (2-8)" }
                                 div class="range-group" {
-                                    input type="range" id="grid-size" name="grid_size" min="2" max="8" value="2" step="1" {}
-                                    span id="grid-size-value" class="range-value" { "2" }
+                                    input type="range" id="grid-size" name="grid_size" min="2" max="8" value="4" step="1" {}
+                                    span id="grid-size-value" class="range-value" { "4" }
                                 }
                             }
 
                             div class="form-group" {
                                 label for="shapes" { "Number of Shapes (1-10)" }
                                 div class="range-group" {
-                                    input type="range" id="shapes" name="shapes" min="1" max="10" value="3" step="1" {}
-                                    span id="shapes-value" class="range-value" { "3" }
+                                    input type="range" id="shapes" name="shapes" min="1" max="10" value="4" step="1" {}
+                                    span id="shapes-value" class="range-value" { "4" }
                                 }
                             }
 

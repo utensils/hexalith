@@ -228,13 +228,14 @@
           devshell.startup.menu.text = "menu";
         };
 
-        # Create simple wrapper scripts that use cargo to run the binaries
+        # Create simple wrapper scripts that use rustup to run the binaries
         
         # Default CLI application
         apps.default = {
           type = "app";
           program = toString (pkgs.writeShellScript "hexalith-cli" ''
-            export PATH="${pkgs.git}/bin:$PATH"
+            # Add necessary tools to PATH
+            export PATH="${pkgs.git}/bin:${pkgs.rustup}/bin:${pkgs.curl}/bin:$PATH"
             
             # Always use a clean directory to avoid build conflicts
             REPO_DIR=$(mktemp -d)
@@ -243,19 +244,28 @@
             trap "rm -rf $REPO_DIR" EXIT
             
             echo "Cloning hexalith repository to temporary directory..."
-            ${pkgs.git}/bin/git clone --depth 1 https://github.com/utensils/hexalith.git "$REPO_DIR" >/dev/null 2>&1
+            git clone --depth 1 https://github.com/utensils/hexalith.git "$REPO_DIR" >/dev/null 2>&1
             
             cd "$REPO_DIR"
             
-            echo "Generating logo..."
-            # Clear any Rust environment variables that could interfere
-            unset RUSTFLAGS RUSTDOCFLAGS CARGO_RUSTFLAGS CARGO_UNSTABLE_SPARSE_REGISTRY RUSTC_BOOTSTRAP
+            echo "Setting up clean Rust environment..."
+            # Clear any environment variables that could interfere
+            unset RUSTFLAGS RUSTDOCFLAGS CARGO_RUSTFLAGS CARGO_UNSTABLE_SPARSE_REGISTRY RUSTC_BOOTSTRAP RUSTUP_TOOLCHAIN
             
-            # Set clean environment
+            # Set up a clean environment
+            export HOME="$REPO_DIR"
+            export CARGO_HOME="$REPO_DIR/.cargo"
+            export RUSTUP_HOME="$REPO_DIR/.rustup"
             export CARGO_TERM_COLOR="always"
             
-            # Run using the pinned stable toolchain
-            ${rustToolchain}/bin/cargo run --bin hexlogogen -- --format svg --verbose logo.svg "$@"
+            # Install rustup and the stable toolchain
+            echo "Installing Rust toolchain (this may take a moment)..."
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal -c rustfmt,clippy >/dev/null 2>&1
+            source "$CARGO_HOME/env"
+            
+            echo "Generating logo..."
+            # Run cargo directly from our clean environment
+            cargo run --bin hexlogogen -- --format svg --verbose logo.svg "$@"
           '');
         };
         
@@ -266,7 +276,8 @@
         apps.web = {
           type = "app";
           program = toString (pkgs.writeShellScript "hexalith-web" ''
-            export PATH="${pkgs.git}/bin:$PATH"
+            # Add necessary tools to PATH
+            export PATH="${pkgs.git}/bin:${pkgs.rustup}/bin:${pkgs.curl}/bin:$PATH"
             
             # Always use a clean directory to avoid build conflicts
             REPO_DIR=$(mktemp -d)
@@ -275,19 +286,28 @@
             trap "rm -rf $REPO_DIR" EXIT
             
             echo "Cloning hexalith repository to temporary directory..."
-            ${pkgs.git}/bin/git clone --depth 1 https://github.com/utensils/hexalith.git "$REPO_DIR" >/dev/null 2>&1
+            git clone --depth 1 https://github.com/utensils/hexalith.git "$REPO_DIR" >/dev/null 2>&1
             
             cd "$REPO_DIR"
             
-            echo "Starting web interface..."
-            # Clear any Rust environment variables that could interfere
-            unset RUSTFLAGS RUSTDOCFLAGS CARGO_RUSTFLAGS CARGO_UNSTABLE_SPARSE_REGISTRY RUSTC_BOOTSTRAP
+            echo "Setting up clean Rust environment..."
+            # Clear any environment variables that could interfere
+            unset RUSTFLAGS RUSTDOCFLAGS CARGO_RUSTFLAGS CARGO_UNSTABLE_SPARSE_REGISTRY RUSTC_BOOTSTRAP RUSTUP_TOOLCHAIN
             
-            # Set clean environment
+            # Set up a clean environment
+            export HOME="$REPO_DIR"
+            export CARGO_HOME="$REPO_DIR/.cargo"
+            export RUSTUP_HOME="$REPO_DIR/.rustup"
             export CARGO_TERM_COLOR="always"
             
-            # Run using the pinned stable toolchain
-            ${rustToolchain}/bin/cargo run --bin hexweb
+            # Install rustup and the stable toolchain
+            echo "Installing Rust toolchain (this may take a moment)..."
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal -c rustfmt,clippy >/dev/null 2>&1
+            source "$CARGO_HOME/env"
+            
+            echo "Starting web interface..."
+            # Run cargo directly from our clean environment
+            cargo run --bin hexweb
           '');
         };
       }

@@ -10,6 +10,16 @@ pub fn index_page() -> Markup {
                 link rel="icon" href="/assets/favicon.svg" type="image/svg+xml";
                 title { "Hexalith Logo Generator" }
                 style { r#"
+                    /* Animation for the logo generation */
+                    @keyframes pulse {
+                        0% { opacity: 0.6; }
+                        50% { opacity: 0.8; }
+                        100% { opacity: 0.6; }
+                    }
+                    
+                    .generating {
+                        animation: pulse 1.5s infinite;
+                    }
                     body {
                         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
                         line-height: 1.6;
@@ -265,8 +275,35 @@ pub fn index_page() -> Markup {
                         setTimeout(generateLogo, 100);
                     });
                     
+                    // Generate request in progress flag
+                    let generationInProgress = false;
+                    
                     // Generate a logo
                     async function generateLogo() {
+                        // Prevent multiple simultaneous requests
+                        if (generationInProgress) {
+                            return;
+                        }
+                        
+                        // Show loading state
+                        const generateBtn = document.getElementById('generate-btn');
+                        const originalBtnText = generateBtn.textContent;
+                        generateBtn.disabled = true;
+                        generateBtn.textContent = "Generating...";
+                        
+                        // Set the preview image to a loading state
+                        const previewImg = document.getElementById('logo-preview');
+                        const currentSrc = previewImg.src;
+                        previewImg.style.opacity = "0.5";
+                        previewImg.classList.add('generating');
+                        
+                        // Update logo info to show loading
+                        const logoInfo = document.getElementById('logo-info');
+                        const originalInfo = logoInfo.innerHTML;
+                        logoInfo.innerHTML = `<p>Generating your logo...</p>`;
+                        
+                        generationInProgress = true;
+                        
                         const form = document.getElementById('logo-form');
                         const formData = new FormData(form);
                         
@@ -349,9 +386,29 @@ pub fn index_page() -> Markup {
                                 url: svgUrl
                             });
                             
+                            // Create a loading effect for the image
+                            previewImg.onload = function() {
+                                previewImg.style.opacity = "1";
+                                previewImg.classList.remove('generating');
+                            };
+                            
                         } catch (error) {
                             console.error('Error generating logo:', error);
                             alert('Failed to generate logo: ' + error.message);
+                            
+                            // Restore original info on error
+                            logoInfo.innerHTML = originalInfo;
+                            
+                            // Remove generating state from image
+                            previewImg.style.opacity = "1";
+                            previewImg.classList.remove('generating');
+                        } finally {
+                            // Reset the generate button regardless of success/failure
+                            setTimeout(() => {
+                                generateBtn.disabled = false;
+                                generateBtn.textContent = originalBtnText;
+                                generationInProgress = false;
+                            }, 500); // Small delay to prevent too rapid clicking
                         }
                     }
                     

@@ -80,7 +80,7 @@ mod tests {
             assert!(!adjacent.is_empty());
         }
     }
-    
+
     #[test]
     fn test_original_style_grid() {
         let size = 100.0;
@@ -90,25 +90,25 @@ mod tests {
 
         // Original style grid should have exactly 24 cells
         assert_eq!(grid.cell_count(), 24);
-        
+
         // Verify centroid functionality
         for i in 0..grid.cell_count() {
             let centroid = grid.get_cell_centroid(i);
             assert!(centroid.is_some());
         }
-        
+
         // Non-existent cell should return None
         assert!(grid.get_cell_centroid(100).is_none());
         assert!(grid.get_cell(100).is_none());
-        
+
         // Verify cells access method
         let cells = grid.cells();
         assert_eq!(cells.len(), 24);
-        
+
         // Verify hex_grid and hex_grid_mut methods
         let hex_grid = grid.hex_grid();
         assert_eq!(hex_grid.size, size);
-        
+
         let mut grid = TriangularGrid::new(size, grid_density);
         let hex_grid_mut = grid.hex_grid_mut();
         assert_eq!(hex_grid_mut.size, size);

@@ -144,7 +144,7 @@ fn compute_region_boundary(grid: &TriangularGrid, cell_ids: &[usize]) -> Vec<Poi
         }
 
         if is_boundary {
-            boundary_edges.push(edge1.clone());
+            boundary_edges.push(*edge1);
         }
     }
 
@@ -152,7 +152,7 @@ fn compute_region_boundary(grid: &TriangularGrid, cell_ids: &[usize]) -> Vec<Poi
     let mut ordered_edges = Vec::new();
 
     if let Some(first_edge) = boundary_edges.first() {
-        ordered_edges.push(first_edge.clone());
+        ordered_edges.push(*first_edge);
         boundary_edges.remove(0);
 
         while !boundary_edges.is_empty() {
@@ -166,7 +166,7 @@ fn compute_region_boundary(grid: &TriangularGrid, cell_ids: &[usize]) -> Vec<Poi
                 if (boundary_edges[i].0.x - last_point.x).abs() < 1e-6
                     && (boundary_edges[i].0.y - last_point.y).abs() < 1e-6
                 {
-                    ordered_edges.push(boundary_edges[i].clone());
+                    ordered_edges.push(boundary_edges[i]);
                     boundary_edges.remove(i);
                     found = true;
                     break;
@@ -186,7 +186,7 @@ fn compute_region_boundary(grid: &TriangularGrid, cell_ids: &[usize]) -> Vec<Poi
             if !found {
                 // If we can't find a connected edge, we might have multiple disjoint regions
                 // Just add the remaining edges in arbitrary order
-                ordered_edges.extend(boundary_edges.drain(..));
+                ordered_edges.append(&mut boundary_edges);
             }
         }
     }

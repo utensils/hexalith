@@ -11,13 +11,13 @@ pub struct ColorManager {
 /// Available color themes for logo generation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Theme {
-    Mesos,    // Original Mesos style colors
-    Google,   // Google brand colors
-    Blues,    // Blue color theme
-    Greens,   // Green color theme
-    Reds,     // Red color theme
-    Purples,  // Purple color theme
-    Rainbow,  // All colors of the rainbow
+    Mesos,   // Original Mesos style colors
+    Google,  // Google brand colors
+    Blues,   // Blue color theme
+    Greens,  // Green color theme
+    Reds,    // Red color theme
+    Purples, // Purple color theme
+    Rainbow, // All colors of the rainbow
 }
 
 impl std::fmt::Display for Theme {
@@ -59,12 +59,12 @@ impl ColorManager {
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
                     .subsec_nanos();
-                
+
                 // Combine seed and timestamp for additional randomness
                 // But only use a portion of the nanoseconds to preserve some determinism
                 let combined_seed = seed.wrapping_add((now % 10000) as u64);
                 ChaCha8Rng::seed_from_u64(combined_seed)
-            },
+            }
             None => ChaCha8Rng::from_entropy(),
         };
 
@@ -75,7 +75,7 @@ impl ColorManager {
     pub fn available_themes() -> Vec<String> {
         vec![
             "mesos".to_string(),
-            "google".to_string(), 
+            "google".to_string(),
             "blues".to_string(),
             "greens".to_string(),
             "reds".to_string(),
@@ -98,12 +98,14 @@ impl ColorManager {
     }
 
     /// Create a ColorManager with the specified theme by name
+    #[allow(dead_code)]
     pub fn with_theme_name(theme_name: &str, seed: Option<u64>) -> Self {
         let theme = Theme::from(theme_name);
         Self::with_theme(theme, seed)
     }
 
     /// Initialize with the default (Mesos) theme
+    #[allow(dead_code)]
     pub fn default(seed: Option<u64>) -> Self {
         Self::mesos_theme(seed)
     }
@@ -133,7 +135,7 @@ impl ColorManager {
             seed,
         )
     }
-    
+
     /// Google theme - based on Google's brand colors
     pub fn google_theme(seed: Option<u64>) -> Self {
         Self::new(
@@ -157,7 +159,7 @@ impl ColorManager {
             seed,
         )
     }
-    
+
     /// Blues theme - various shades of blue
     pub fn blues_theme(seed: Option<u64>) -> Self {
         Self::new(
@@ -181,7 +183,7 @@ impl ColorManager {
             seed,
         )
     }
-    
+
     /// Greens theme - various shades of green
     pub fn greens_theme(seed: Option<u64>) -> Self {
         Self::new(
@@ -205,7 +207,7 @@ impl ColorManager {
             seed,
         )
     }
-    
+
     /// Reds theme - various shades of red and orange
     pub fn reds_theme(seed: Option<u64>) -> Self {
         Self::new(
@@ -229,7 +231,7 @@ impl ColorManager {
             seed,
         )
     }
-    
+
     /// Purples theme - various shades of purple and pink
     pub fn purples_theme(seed: Option<u64>) -> Self {
         Self::new(
@@ -253,7 +255,7 @@ impl ColorManager {
             seed,
         )
     }
-    
+
     /// Rainbow theme - full spectrum of colors
     pub fn rainbow_theme(seed: Option<u64>) -> Self {
         Self::new(
@@ -296,42 +298,47 @@ impl ColorManager {
         }
         colors
     }
-    
+
     /// Get a color that's different from the provided colors
     pub fn get_different_color(&mut self, existing_colors: &[String]) -> String {
         if existing_colors.is_empty() {
             return self.get_random_color();
         }
-        
+
         let mut color = self.get_random_color();
         let max_attempts = 20; // Prevent infinite loop in cases with limited palette
         let mut attempts = 0;
-        
+
         while existing_colors.contains(&color) && attempts < max_attempts {
             color = self.get_random_color();
             attempts += 1;
         }
-        
+
         color
     }
-    
+
     /// Get a color for a shape that's harmonious with the design
     /// This avoids using the same color for adjacent shapes
-    pub fn get_color_avoiding_adjacency(&mut self, grid: &crate::generator::grid::TriangularGrid, 
-                                       shape_cells: &[usize], existing_shapes: &[crate::generator::shape::Shape]) -> String {
+    #[allow(dead_code)]
+    pub fn get_color_avoiding_adjacency(
+        &mut self,
+        grid: &crate::generator::grid::TriangularGrid,
+        shape_cells: &[usize],
+        existing_shapes: &[crate::generator::shape::Shape],
+    ) -> String {
         // If no existing shapes, just return a random color
         if existing_shapes.is_empty() {
             return self.get_random_color();
         }
-        
+
         // Build an adjacency list to track which colors to avoid
         let mut adjacent_colors = Vec::new();
-        
+
         // For each cell in our shape
         for &cell_id in shape_cells {
             // Get all adjacent cells
             let adjacent_cells = grid.adjacent_cells(cell_id);
-            
+
             // For each adjacent cell, check if it belongs to an existing shape
             for &adj_cell in &adjacent_cells {
                 for existing_shape in existing_shapes {
@@ -343,48 +350,52 @@ impl ColorManager {
                 }
             }
         }
-        
+
         // Remove duplicates
         adjacent_colors.sort_unstable();
         adjacent_colors.dedup();
-        
+
         // Get a color different from all adjacent colors
         self.get_different_color(&adjacent_colors)
     }
-    
+
     /// Assign optimal colors to a set of shapes to ensure visual harmony
-    pub fn assign_harmonious_colors(&mut self, grid: &crate::generator::grid::TriangularGrid, 
-                                  shapes: &mut Vec<crate::generator::shape::Shape>) {
+    pub fn assign_harmonious_colors(
+        &mut self,
+        grid: &crate::generator::grid::TriangularGrid,
+        shapes: &mut [crate::generator::shape::Shape],
+    ) {
         // Create a map of shape index -> adjacent shape indices
         let mut adjacency_map: HashMap<usize, Vec<usize>> = HashMap::new();
-        
+
         // For each shape, find adjacent shapes
         for i in 0..shapes.len() {
             let mut adjacent_shapes = Vec::new();
-            
+
             // Check each cell in this shape
             for &cell_id in &shapes[i].cells {
                 // Get adjacent cells
                 let adjacent_cells = grid.adjacent_cells(cell_id);
-                
+
                 // For each adjacent cell, check if it belongs to another shape
                 for &adj_cell in &adjacent_cells {
-                    for j in 0..shapes.len() {
-                        if i != j && shapes[j].contains_cell(adj_cell) && !adjacent_shapes.contains(&j) {
+                    for (j, shape) in shapes.iter().enumerate() {
+                        if i != j && shape.contains_cell(adj_cell) && !adjacent_shapes.contains(&j)
+                        {
                             adjacent_shapes.push(j);
                             break;
                         }
                     }
                 }
             }
-            
+
             adjacency_map.insert(i, adjacent_shapes);
         }
-        
+
         // Assign colors using a greedy algorithm (Welsh-Powell)
         let mut available_colors = self.get_random_colors(self.palette.len().min(shapes.len() + 3));
         let mut assigned_colors: HashMap<usize, String> = HashMap::new();
-        
+
         // Sort shapes by number of adjacencies (descending)
         let mut shape_indices: Vec<usize> = (0..shapes.len()).collect();
         shape_indices.sort_by(|&a, &b| {
@@ -392,18 +403,20 @@ impl ColorManager {
             let b_adj = adjacency_map.get(&b).map_or(0, |v| v.len());
             b_adj.cmp(&a_adj) // Descending order
         });
-        
+
         // Assign colors to shapes
         for &shape_idx in &shape_indices {
             // Get colors of adjacent shapes
-            let adjacent_colors: Vec<String> = if let Some(adj_indices) = adjacency_map.get(&shape_idx) {
-                adj_indices.iter()
-                    .filter_map(|&adj_idx| assigned_colors.get(&adj_idx).cloned())
-                    .collect()
-            } else {
-                Vec::new()
-            };
-            
+            let adjacent_colors: Vec<String> =
+                if let Some(adj_indices) = adjacency_map.get(&shape_idx) {
+                    adj_indices
+                        .iter()
+                        .filter_map(|&adj_idx| assigned_colors.get(&adj_idx).cloned())
+                        .collect()
+                } else {
+                    Vec::new()
+                };
+
             // Find first available color not used by adjacent shapes
             let mut chosen_color = None;
             for color in &available_colors {
@@ -412,7 +425,7 @@ impl ColorManager {
                     break;
                 }
             }
-            
+
             // If no suitable color found, add a new random one that's different from adjacent
             let color = match chosen_color {
                 Some(color) => color,
@@ -422,11 +435,11 @@ impl ColorManager {
                     new_color
                 }
             };
-            
+
             // Assign the color
             assigned_colors.insert(shape_idx, color);
         }
-        
+
         // Update the actual shapes with assigned colors
         for (i, shape) in shapes.iter_mut().enumerate() {
             if let Some(color) = assigned_colors.get(&i) {
@@ -434,9 +447,10 @@ impl ColorManager {
             }
         }
     }
-    
+
     /// Get a pair of colors with a blended color for overlapping regions
     /// Returns (color1, color2, blend)
+    #[allow(dead_code)]
     pub fn get_colors_with_blend(&mut self) -> (String, String, String) {
         // Get two distinct random colors
         let color1 = self.get_random_color();
@@ -444,30 +458,30 @@ impl ColorManager {
         while color2 == color1 {
             color2 = self.get_random_color();
         }
-        
+
         // Create a blended color by averaging the RGB values
         let (r1, g1, b1) = Self::hex_to_rgb(&color1);
         let (r2, g2, b2) = Self::hex_to_rgb(&color2);
-        
+
         let blend_r = (r1 as u16 + r2 as u16) / 2;
         let blend_g = (g1 as u16 + g2 as u16) / 2;
         let blend_b = (b1 as u16 + b2 as u16) / 2;
-        
+
         let blend = Self::rgb_to_hex(blend_r as u8, blend_g as u8, blend_b as u8);
-        
+
         (color1, color2, blend)
     }
-    
+
     /// Calculate color contrast ratio between two colors
     pub fn color_contrast(color1: &str, color2: &str) -> f64 {
         // Convert to RGB
         let (r1, g1, b1) = Self::hex_to_rgb(color1);
         let (r2, g2, b2) = Self::hex_to_rgb(color2);
-        
+
         // Calculate relative luminance
         let l1 = Self::relative_luminance(r1, g1, b1);
         let l2 = Self::relative_luminance(r2, g2, b2);
-        
+
         // Calculate contrast ratio
         if l1 > l2 {
             (l1 + 0.05) / (l2 + 0.05)
@@ -475,18 +489,18 @@ impl ColorManager {
             (l2 + 0.05) / (l1 + 0.05)
         }
     }
-    
+
     /// Calculate relative luminance for contrast calculation
     fn relative_luminance(r: u8, g: u8, b: u8) -> f64 {
         // Convert RGB to linear values first
         let r_linear = Self::to_linear(r as f64 / 255.0);
         let g_linear = Self::to_linear(g as f64 / 255.0);
         let b_linear = Self::to_linear(b as f64 / 255.0);
-        
+
         // Calculate luminance (per WCAG formula)
         0.2126 * r_linear + 0.7152 * g_linear + 0.0722 * b_linear
     }
-    
+
     /// Convert sRGB value to linear RGB value
     fn to_linear(value: f64) -> f64 {
         if value <= 0.03928 {
@@ -517,6 +531,7 @@ impl ColorManager {
     }
 
     /// Blend two colors together with a given opacity
+    #[allow(dead_code)]
     pub fn blend_colors(color1: &str, color2: &str, opacity: f32) -> String {
         let (r1, g1, b1) = Self::hex_to_rgb(color1);
         let (r2, g2, b2) = Self::hex_to_rgb(color2);
@@ -584,122 +599,128 @@ mod tests {
             assert!(manager.palette().contains(&color));
         }
     }
-    
+
     #[test]
     fn test_get_different_color() {
         let mut manager = ColorManager::default(Some(42)); // Fixed seed for deterministic testing
-        
+
         let existing_colors = vec![
             "#FFCC09".to_string(),
             "#F68A21".to_string(),
             "#E42728".to_string(),
         ];
-        
+
         let different_color = manager.get_different_color(&existing_colors);
         assert!(!existing_colors.contains(&different_color));
     }
-    
+
     #[test]
     fn test_color_contrast() {
         // Test high contrast (black/white)
         let contrast = ColorManager::color_contrast("#FFFFFF", "#000000");
         assert!(contrast > 20.0); // Should be 21.0
-        
+
         // Test low contrast (similar colors)
         let contrast = ColorManager::color_contrast("#FF0000", "#FF0001");
         assert!(contrast < 1.1); // Should be very close to 1.0
     }
-    
+
     #[test]
     fn test_with_theme_name() {
         // Test with a valid theme name
         let manager = ColorManager::with_theme_name("blues", Some(42));
         let palette = manager.palette();
-        
+
         // Verify colors are from the blues theme
-        assert!(palette.iter().any(|color| color.to_uppercase() == "#1E88E5" || 
-                                         color.to_uppercase() == "#2196F3" || 
-                                         color.to_uppercase() == "#0D47A1"));
-        
+        assert!(palette.iter().any(|color| color.to_uppercase() == "#1E88E5"
+            || color.to_uppercase() == "#2196F3"
+            || color.to_uppercase() == "#0D47A1"));
+
         // Test with another theme
         let manager = ColorManager::with_theme_name("google", Some(42));
         let palette = manager.palette();
-        
+
         // Verify colors are from the google theme
-        assert!(palette.iter().any(|color| color.to_uppercase() == "#4285F4"));
+        assert!(palette
+            .iter()
+            .any(|color| color.to_uppercase() == "#4285F4"));
     }
-    
+
     #[test]
     fn test_default() {
         // Test default theme (should be Mesos)
         let manager = ColorManager::default(Some(42));
         let palette = manager.palette();
-        
+
         // Verify colors are from the Mesos theme
-        assert!(palette.iter().any(|color| color.to_uppercase() == "#FFCC09"));
-        assert!(palette.iter().any(|color| color.to_uppercase() == "#E42728"));
+        assert!(palette
+            .iter()
+            .any(|color| color.to_uppercase() == "#FFCC09"));
+        assert!(palette
+            .iter()
+            .any(|color| color.to_uppercase() == "#E42728"));
     }
-    
+
     #[test]
     fn test_colors_with_blend() {
         let mut manager = ColorManager::default(Some(42));
-        
+
         let (color1, color2, blend) = manager.get_colors_with_blend();
-        
+
         // Verify the colors are from the palette
         assert!(manager.palette().contains(&color1));
         assert!(manager.palette().contains(&color2));
-        
+
         // Verify that color1 and color2 are different
         assert_ne!(color1, color2);
-        
+
         // Verify the blend logic
         let (r1, g1, b1) = ColorManager::hex_to_rgb(&color1);
         let (r2, g2, b2) = ColorManager::hex_to_rgb(&color2);
         let (rb, gb, bb) = ColorManager::hex_to_rgb(&blend);
-        
+
         // The blend should be the average of the RGB values
         assert_eq!(rb, ((r1 as u16 + r2 as u16) / 2) as u8);
         assert_eq!(gb, ((g1 as u16 + g2 as u16) / 2) as u8);
         assert_eq!(bb, ((b1 as u16 + b2 as u16) / 2) as u8);
     }
-    
+
     #[test]
     fn test_color_avoiding_adjacency() {
         use crate::generator::grid::triangular::TriangularGrid;
         use crate::generator::shape::Shape;
-        
+
         // Create a triangular grid for testing
         let grid = TriangularGrid::new(100.0, 2);
-        
+
         // Create a ColorManager
         let mut manager = ColorManager::default(Some(42));
-        
+
         // Test with no existing shapes (should just return a random color)
         let shape_cells = vec![0, 1, 2];
         let existing_shapes: Vec<Shape> = vec![];
         let color = manager.get_color_avoiding_adjacency(&grid, &shape_cells, &existing_shapes);
-        
+
         assert!(manager.palette().contains(&color));
-        
+
         // Create a shape with a known color
         let mut shape1 = Shape::new("#FF0000".to_string(), 0.8);
         shape1.add_cell(3);
         shape1.add_cell(4);
-        
+
         // Create another shape with a different color
         let mut shape2 = Shape::new("#00FF00".to_string(), 0.8);
         shape2.add_cell(6);
         shape2.add_cell(7);
-        
+
         let existing_shapes = vec![shape1, shape2];
-        
+
         // Get a color avoiding adjacency to these shapes
         let color = manager.get_color_avoiding_adjacency(&grid, &shape_cells, &existing_shapes);
-        
+
         // The color should be from the palette
         assert!(manager.palette().contains(&color));
-        
+
         // The color should be different from the existing shapes' colors
         assert_ne!(color, "#FF0000");
         assert_ne!(color, "#00FF00");

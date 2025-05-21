@@ -98,8 +98,9 @@ pub fn run() -> Result<()> {
 
     // Set up the generator
     let mut generator = Generator::new(cli.grid_size, cli.shapes, cli.opacity, seed);
-    generator.set_color_scheme(&cli.theme)
-             .set_allow_overlap(cli.overlap);
+    generator
+        .set_color_scheme(&cli.theme)
+        .set_allow_overlap(cli.overlap);
 
     // Generate the logo
     generator.generate()?;
@@ -149,7 +150,10 @@ pub fn run() -> Result<()> {
         println!("  Grid size: {}", cli.grid_size);
         println!("  Shapes: {}", cli.shapes);
         println!("  Opacity: {}", cli.opacity);
-        println!("  Overlap: {}", if cli.overlap { "enabled" } else { "disabled" });
+        println!(
+            "  Overlap: {}",
+            if cli.overlap { "enabled" } else { "disabled" }
+        );
         println!("  {}", seed_info);
     }
 

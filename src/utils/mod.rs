@@ -11,8 +11,8 @@ pub fn uuid_to_seed(uuid: &str) -> Result<u64> {
 
     // Convert first 8 bytes to a u64
     let mut seed = 0u64;
-    for i in 0..8 {
-        seed = (seed << 8) | bytes[i] as u64;
+    for &byte in bytes.iter().take(8) {
+        seed = (seed << 8) | byte as u64;
     }
 
     Ok(seed)

@@ -38,9 +38,9 @@ impl Shape {
 /// Shape evaluation metrics for balanced shapes
 #[derive(Debug, Clone, Copy)]
 pub struct ShapeMetrics {
-    pub compactness: f64,  // Higher is better (more compact)
-    pub smoothness: f64,   // Higher is better (smoother perimeter)
-    pub balance: f64,      // Higher is better (more balanced from center)
+    pub compactness: f64, // Higher is better (more compact)
+    pub smoothness: f64,  // Higher is better (smoother perimeter)
+    pub balance: f64,     // Higher is better (more balanced from center)
 }
 
 /// Generates random shapes on the triangular grid
@@ -59,12 +59,12 @@ impl<'a> ShapeGenerator<'a> {
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
                     .subsec_nanos();
-                
+
                 // Combine seed and timestamp for additional randomness
                 // But only use a portion of the nanoseconds to keep some seed determinism
                 let combined_seed = seed.wrapping_add((now % 10000) as u64);
                 ChaCha8Rng::seed_from_u64(combined_seed)
-            },
+            }
             None => ChaCha8Rng::from_entropy(),
         };
 
@@ -82,27 +82,30 @@ impl<'a> ShapeGenerator<'a> {
         // Generate multiple candidate shapes and select the best one
         let candidates = 3;
         let mut shapes = Vec::with_capacity(candidates);
-        
+
         for _ in 0..candidates {
             shapes.push(self.generate_angular_shape_candidate(color.clone(), opacity, target_size));
         }
-        
+
         // Sort shapes by quality metric
         shapes.sort_by(|a, b| {
             let score_a = self.evaluate_shape_quality(a);
             let score_b = self.evaluate_shape_quality(b);
-            
+
             // Higher is better, but add randomness to avoid always picking the same shape
             let random_factor = self.rng.gen_range(-0.1..0.1);
             (score_b.total_score() + random_factor)
                 .partial_cmp(&score_a.total_score())
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
-        
+
         // Return the best shape
-        shapes.into_iter().next().unwrap_or_else(|| Shape::new(color, opacity))
+        shapes
+            .into_iter()
+            .next()
+            .unwrap_or_else(|| Shape::new(color, opacity))
     }
-    
+
     /// Internal function to generate a candidate shape with angular properties
     fn generate_angular_shape_candidate(
         &mut self,
@@ -112,11 +115,11 @@ impl<'a> ShapeGenerator<'a> {
     ) -> Shape {
         let mut shape = Shape::new(color, opacity);
         let total_cells = self.grid.cell_count();
-        
+
         if total_cells == 0 || target_size == 0 {
             return shape;
         }
-        
+
         // Choose a starting cell
         // We now have a small chance to not start exactly at the center
         let center_cells = self.find_center_cells();
@@ -127,97 +130,99 @@ impl<'a> ShapeGenerator<'a> {
             // 30% chance to start from one of the next closest cells to center
             self.rng.gen_range(0..center_cells.len().min(3))
         };
-        
+
         let start_cell = center_cells[start_cell_idx];
         shape.add_cell(start_cell);
-        
+
         // Maximum attempts to reach target size
         let max_attempts = target_size * 3;
         let mut attempts = 0;
-        
+
         // Use a modified breadth-first growth approach that creates balanced, angular patterns
         // while maintaining connectivity and growing from center out
         let mut current_layer = vec![start_cell];
         let mut next_layer = Vec::new();
-        
+
         // Keep a frontier of cells to consider in the current layer
         let mut frontier = Vec::new();
-        
+
         // Track boundary cells (cells with at least one non-filled adjacent cell)
         let mut boundary = HashSet::new();
         boundary.insert(start_cell);
-        
+
         // Randomness factor for this particular shape
         // This controls how much randomness vs. balance we want
-        let randomness = self.rng.gen_range(0.2..0.5); 
-        
+        let randomness = self.rng.gen_range(0.2..0.5);
+
         // Keep adding cells until we reach the target size
         while shape.cell_count() < target_size && attempts < max_attempts {
             attempts += 1;
-            
+
             // If frontier is empty, refill it from current layer
             if frontier.is_empty() {
                 if current_layer.is_empty() {
                     // Move to next layer if current is empty
                     current_layer = next_layer;
                     next_layer = Vec::new();
-                    
+
                     // If both layers are empty, we can't grow any further
                     if current_layer.is_empty() {
                         break;
                     }
                 }
-                
+
                 // Get a cell from current layer and find its adjacent cells
                 let cell = current_layer.remove(0);
-                
+
                 // Find all adjacent cells that aren't already in the shape
                 for adj_id in self.grid.adjacent_cells(cell) {
                     if !shape.contains_cell(adj_id) && !frontier.contains(&adj_id) {
                         frontier.push(adj_id);
                     }
                 }
-                
+
                 // If no adjacent cells available, continue to next cell in layer
                 if frontier.is_empty() {
                     continue;
                 }
             }
-            
+
             // Sort the frontier by a balanced scoring heuristic
             frontier.sort_by(|&a, &b| {
                 let score_a = self.score_candidate_cell(&shape, a);
                 let score_b = self.score_candidate_cell(&shape, b);
                 // Compare scores (higher is better)
-                score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
+                score_b
+                    .partial_cmp(&score_a)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             });
-            
+
             // Introduce more randomness in selection
             let selected_idx = if self.rng.gen::<f32>() < randomness {
                 // Sometimes pick completely randomly for variety
                 self.rng.gen_range(0..frontier.len())
             } else {
-                // Choose from top candidates but with some randomness 
+                // Choose from top candidates but with some randomness
                 let top_candidates = (frontier.len() / 2).max(1).min(frontier.len());
                 self.rng.gen_range(0..top_candidates)
             };
-            
+
             // Choose a cell from the frontier
             let next_cell = frontier.remove(selected_idx);
-            
+
             // Add the cell to the shape
             shape.add_cell(next_cell);
-            
+
             // Add it to the next layer for future expansion
             next_layer.push(next_cell);
-            
+
             // Update boundary cells
             boundary.remove(&next_cell);
-            
+
             // Check if this cell has any adjacent cells not in the shape
             let adjacent_cells = self.grid.adjacent_cells(next_cell);
             let mut has_non_filled_adjacent = false;
-            
+
             for &adj in &adjacent_cells {
                 if !shape.contains_cell(adj) {
                     has_non_filled_adjacent = true;
@@ -226,11 +231,11 @@ impl<'a> ShapeGenerator<'a> {
                     }
                 }
             }
-            
+
             if has_non_filled_adjacent {
                 boundary.insert(next_cell);
             }
-            
+
             // For angular shapes, periodically skip cells to create more angles
             // but with more controlled selection based on shape quality
             if self.rng.gen::<f32>() < (0.1 + randomness) && frontier.len() > 2 {
@@ -239,59 +244,61 @@ impl<'a> ShapeGenerator<'a> {
                     let score_a = self.score_candidate_cell(&shape, a);
                     let score_b = self.score_candidate_cell(&shape, b);
                     // Compare scores (lower is worse)
-                    score_a.partial_cmp(&score_b).unwrap_or(std::cmp::Ordering::Equal)
+                    score_a
+                        .partial_cmp(&score_b)
+                        .unwrap_or(std::cmp::Ordering::Equal)
                 });
-                
+
                 // Remove the worst candidate
                 frontier.remove(0);
             }
         }
-        
+
         // Only smooth the shape if it's not very angular (controlled by randomness)
         if self.rng.gen::<f32>() > randomness {
             self.smooth_shape(&mut shape, target_size);
         }
-        
+
         shape
     }
-    
+
     /// Score a candidate cell for addition to a shape
     /// Higher scores indicate better candidates for balanced shapes
     fn score_candidate_cell(&self, shape: &Shape, cell_id: usize) -> f64 {
         if shape.cells.is_empty() {
             return 1.0; // All cells are equally good for empty shapes
         }
-        
+
         let mut score = 0.0;
-        
+
         // Get the cell
         if let Some(cell) = self.grid.get_cell(cell_id) {
             // Get the shape center (average of all cell centroids)
             let mut center_x = 0.0;
             let mut center_y = 0.0;
-            
+
             for &id in &shape.cells {
                 if let Some(existing_cell) = self.grid.get_cell(id) {
                     center_x += existing_cell.centroid.x;
                     center_y += existing_cell.centroid.y;
                 }
             }
-            
+
             center_x /= shape.cells.len() as f64;
             center_y /= shape.cells.len() as f64;
-            
+
             // Compute factors that influence score
-            
+
             // 1. Adjacency factor: more adjacent cells in the shape is better
             let adjacent_cells = self.grid.adjacent_cells(cell_id);
             let mut adjacent_in_shape = 0;
-            
+
             for &adj in &adjacent_cells {
                 if shape.contains_cell(adj) {
                     adjacent_in_shape += 1;
                 }
             }
-            
+
             // Scale adjacency score (2 is ideal - creates smoother boundaries)
             let adjacency_score = if adjacent_in_shape == 0 {
                 0.0 // Must be connected
@@ -302,56 +309,56 @@ impl<'a> ShapeGenerator<'a> {
             } else {
                 0.6 // More than 2 - filling in concave areas
             };
-            
+
             // 2. Distance from center factor
             // We want cells that maintain a somewhat circular growth
             // with center x and y, not too far or too close
             let dx = cell.centroid.x - center_x;
             let dy = cell.centroid.y - center_y;
             let distance = (dx * dx + dy * dy).sqrt();
-            
+
             // Calculate expected radius for a circular shape of current size
             let expected_radius = (shape.cells.len() as f64).sqrt() * 1.2;
-            
-            // Penalize cells that are significantly closer or further 
+
+            // Penalize cells that are significantly closer or further
             // from expected radius - aim for balanced growth
             let dist_ratio = distance / expected_radius;
             let distance_score = 1.0 - (dist_ratio - 1.0).abs().min(1.0);
-            
+
             // 3. Balance factor: prefer cells that maintain overall shape balance
             // This checks if adding this cell would move the shape center
             // significantly or keep it balanced
-            let new_center_x = (center_x * shape.cells.len() as f64 + cell.centroid.x) / 
-                              (shape.cells.len() + 1) as f64;
-            let new_center_y = (center_y * shape.cells.len() as f64 + cell.centroid.y) / 
-                              (shape.cells.len() + 1) as f64;
-            
-            let center_shift = ((new_center_x - center_x).powi(2) + 
-                               (new_center_y - center_y).powi(2)).sqrt();
-            
+            let new_center_x = (center_x * shape.cells.len() as f64 + cell.centroid.x)
+                / (shape.cells.len() + 1) as f64;
+            let new_center_y = (center_y * shape.cells.len() as f64 + cell.centroid.y)
+                / (shape.cells.len() + 1) as f64;
+
+            let center_shift =
+                ((new_center_x - center_x).powi(2) + (new_center_y - center_y).powi(2)).sqrt();
+
             // Normalize by the expected radius
             let balance_score = 1.0 - (center_shift / expected_radius).min(1.0);
-            
+
             // Combine scores with appropriate weights
             score = adjacency_score * 0.4 + distance_score * 0.4 + balance_score * 0.2;
         }
-        
+
         score
     }
-    
+
     /// Apply smoothing to fill in sharp concave areas
     fn smooth_shape(&mut self, shape: &mut Shape, target_size: usize) {
         // If shape is too small, don't smooth
         if shape.cell_count() < 3 || shape.cell_count() >= target_size {
             return;
         }
-        
+
         // Find concave regions that could be filled
         let mut candidates = Vec::new();
-        
+
         // Find all boundary cells (cells with at least one adjacent cell not in shape)
         let mut boundary_cells = Vec::new();
-        
+
         for &cell_id in &shape.cells {
             let adjacent = self.grid.adjacent_cells(cell_id);
             for &adj in &adjacent {
@@ -361,11 +368,11 @@ impl<'a> ShapeGenerator<'a> {
                 }
             }
         }
-        
+
         // For each boundary cell, check if it has adjacent cells also on the boundary
         for &cell_id in &boundary_cells {
             let adjacent = self.grid.adjacent_cells(cell_id);
-            
+
             // Count adjacent cells that are also on the boundary
             let mut adj_boundary = 0;
             for &adj in &adjacent {
@@ -373,39 +380,41 @@ impl<'a> ShapeGenerator<'a> {
                     adj_boundary += 1;
                 }
             }
-            
+
             // Find potential cells to add
             if adj_boundary >= 2 {
                 // This cell has at least 2 neighbors on the boundary
                 // Find external cells adjacent to both this and its boundary neighbors
                 let mut external_cells = HashSet::new();
-                
+
                 for &adj in &adjacent {
                     if shape.contains_cell(adj) && boundary_cells.contains(&adj) {
                         // This is a boundary neighbor
-                        let adj_external: Vec<usize> = self.grid.adjacent_cells(adj)
+                        let adj_external: Vec<usize> = self
+                            .grid
+                            .adjacent_cells(adj)
                             .into_iter()
                             .filter(|&id| !shape.contains_cell(id))
                             .collect();
-                        
+
                         for &ext in &adj_external {
                             external_cells.insert(ext);
                         }
                     }
                 }
-                
+
                 // Check if any external cell is adjacent to 2+ boundary cells
                 // This would fill in a concave area
                 for &ext in &external_cells {
                     let ext_adjacent = self.grid.adjacent_cells(ext);
                     let mut connected_boundary = 0;
-                    
+
                     for &ext_adj in &ext_adjacent {
                         if shape.contains_cell(ext_adj) && boundary_cells.contains(&ext_adj) {
                             connected_boundary += 1;
                         }
                     }
-                    
+
                     if connected_boundary >= 2 {
                         // This external cell would fill in a concave region
                         candidates.push(ext);
@@ -413,22 +422,24 @@ impl<'a> ShapeGenerator<'a> {
                 }
             }
         }
-        
+
         // Add smoothing cells up to target size
         candidates.sort_by(|&a, &b| {
             let score_a = self.score_candidate_cell(shape, a);
             let score_b = self.score_candidate_cell(shape, b);
             // Higher score is better
-            score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
+            score_b
+                .partial_cmp(&score_a)
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
-        
+
         // Add randomness - maybe don't fill all concave areas
         let fill_count = if candidates.is_empty() {
             0
         } else {
             self.rng.gen_range(0..=candidates.len())
         };
-        
+
         for (i, &cell_id) in candidates.iter().enumerate() {
             if i < fill_count && shape.cell_count() < target_size && !shape.contains_cell(cell_id) {
                 shape.add_cell(cell_id);
@@ -437,7 +448,7 @@ impl<'a> ShapeGenerator<'a> {
             }
         }
     }
-    
+
     /// Evaluate the overall quality of a shape based on multiple metrics
     pub fn evaluate_shape_quality(&self, shape: &Shape) -> ShapeMetrics {
         if shape.cells.is_empty() {
@@ -447,25 +458,25 @@ impl<'a> ShapeGenerator<'a> {
                 balance: 0.0,
             };
         }
-        
+
         // 1. Calculate the shape's center
         let mut center_x = 0.0;
         let mut center_y = 0.0;
-        
+
         for &id in &shape.cells {
             if let Some(cell) = self.grid.get_cell(id) {
                 center_x += cell.centroid.x;
                 center_y += cell.centroid.y;
             }
         }
-        
+
         center_x /= shape.cells.len() as f64;
         center_y /= shape.cells.len() as f64;
-        
+
         // 2. Calculate compactness (ratio of perimeter to area)
         let mut boundary_edges = 0;
         let area = shape.cells.len() as f64;
-        
+
         for &cell_id in &shape.cells {
             let adjacent = self.grid.adjacent_cells(cell_id);
             for &adj in &adjacent {
@@ -474,21 +485,21 @@ impl<'a> ShapeGenerator<'a> {
                 }
             }
         }
-        
+
         // Normalize compactness (lower is more compact, so we invert it)
         // Perfect circle would have perimeter² / area = 4π, so we use that as reference
         let perimeter = boundary_edges as f64;
         let compactness = if perimeter > 0.0 {
             // Normalize to 0-1 range, higher is more compact
             let ideal_ratio = (12.56 * area).sqrt(); // 4π * area
-            1.0 - ((perimeter - ideal_ratio) / perimeter).min(1.0).max(0.0)
+            1.0 - ((perimeter - ideal_ratio) / perimeter).clamp(0.0, 1.0)
         } else {
             0.0
         };
-        
+
         // 3. Calculate smoothness (absence of sharp angles in the boundary)
         let mut smoothness = 1.0;
-        
+
         // Find boundary cells
         let mut boundary_cells = Vec::new();
         for &cell_id in &shape.cells {
@@ -500,66 +511,66 @@ impl<'a> ShapeGenerator<'a> {
                 }
             }
         }
-        
+
         // Calculate how many boundary cells have multiple adjacent boundary cells
         // More such cells means more potential for sharp angles
         if !boundary_cells.is_empty() {
             let mut sharp_angles = 0;
-            
+
             for &cell_id in &boundary_cells {
                 let adjacent = self.grid.adjacent_cells(cell_id);
                 let mut adj_boundary = 0;
-                
+
                 for &adj in &adjacent {
                     if shape.contains_cell(adj) && boundary_cells.contains(&adj) {
                         adj_boundary += 1;
                     }
                 }
-                
+
                 // More than 2 adjacent boundary cells could indicate sharp angle
                 if adj_boundary > 2 {
                     sharp_angles += 1;
                 }
             }
-            
+
             // Calculate smoothness ratio (0-1, higher is smoother)
             smoothness = 1.0 - (sharp_angles as f64 / boundary_cells.len() as f64).min(1.0);
         }
-        
+
         // 4. Calculate balance (how evenly distributed cells are around center)
         let mut max_dist: f64 = 0.0;
         let mut avg_dist = 0.0;
         let mut variance = 0.0;
-        
+
         for &id in &shape.cells {
             if let Some(cell) = self.grid.get_cell(id) {
                 let dx = cell.centroid.x - center_x;
                 let dy = cell.centroid.y - center_y;
                 let dist = (dx * dx + dy * dy).sqrt();
-                
+
                 avg_dist += dist;
                 max_dist = max_dist.max(dist);
             }
         }
-        
+
         avg_dist /= shape.cells.len() as f64;
-        
+
         // Calculate variance of distances
         for &id in &shape.cells {
             if let Some(cell) = self.grid.get_cell(id) {
                 let dx = cell.centroid.x - center_x;
                 let dy = cell.centroid.y - center_y;
                 let dist = (dx * dx + dy * dy).sqrt();
-                
+
                 variance += (dist - avg_dist).powi(2);
             }
         }
-        
+
         variance /= shape.cells.len() as f64;
-        
+
         // Lower variance means more uniform distribution around center
         let balance = 1.0 - (variance / max_dist.powi(2)).min(1.0);
-        
+
         ShapeMetrics {
             compactness,
             smoothness,
@@ -577,9 +588,9 @@ impl<'a> ShapeGenerator<'a> {
     ) -> Shape {
         // Now we have a chance to do either a center shape or angular shape
         if self.rng.gen::<f32>() < 0.5 {
-            return self.generate_center_shape(color, opacity, target_size);
+            self.generate_center_shape(color, opacity, target_size)
         } else {
-            return self.generate_angular_shape(color, opacity, target_size);
+            self.generate_angular_shape(color, opacity, target_size)
         }
     }
 
@@ -606,15 +617,23 @@ impl<'a> ShapeGenerator<'a> {
             // Generate first shape - variety for first shape type
             let first_shape = if self.rng.gen::<f32>() < 0.5 {
                 self.generate_balanced_shape(
-                    if colors.is_empty() { String::from("#FF0000") } else { colors[0].clone() },
-                    opacity, 
-                    size
+                    if colors.is_empty() {
+                        String::from("#FF0000")
+                    } else {
+                        colors[0].clone()
+                    },
+                    opacity,
+                    size,
                 )
             } else {
                 self.generate_angular_shape(
-                    if colors.is_empty() { String::from("#FF0000") } else { colors[0].clone() },
-                    opacity, 
-                    size
+                    if colors.is_empty() {
+                        String::from("#FF0000")
+                    } else {
+                        colors[0].clone()
+                    },
+                    opacity,
+                    size,
                 )
             };
 
@@ -661,7 +680,7 @@ impl<'a> ShapeGenerator<'a> {
 
         shapes
     }
-    
+
     /// Generate a balanced, aesthetically pleasing shape
     pub fn generate_balanced_shape(
         &mut self,
@@ -672,38 +691,36 @@ impl<'a> ShapeGenerator<'a> {
         // Generate multiple candidates and select the best one
         let candidates = 3;
         let mut shapes = Vec::with_capacity(candidates);
-        
+
         for _ in 0..candidates {
             shapes.push(self.generate_center_shape(color.clone(), opacity, target_size));
         }
-        
+
         // Sort shapes by quality metrics
         shapes.sort_by(|a, b| {
             let metrics_a = self.evaluate_shape_quality(a);
             let metrics_b = self.evaluate_shape_quality(b);
-            
+
             let score_a = metrics_a.total_score();
             let score_b = metrics_b.total_score();
-            
+
             // Higher score is better, but add randomness to avoid always picking the same shape
             let random_factor = self.rng.gen_range(-0.1..0.1);
             (score_b + random_factor)
                 .partial_cmp(&score_a)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
-        
+
         // Return the best shape
-        shapes.into_iter().next().unwrap_or_else(|| Shape::new(color, opacity))
+        shapes
+            .into_iter()
+            .next()
+            .unwrap_or_else(|| Shape::new(color, opacity))
     }
 
     /// Generates a shape starting from the center of the hexagon and growing outward
     /// This ensures shapes are connected, not floating isolated, and grow from the center out
-    fn generate_center_shape(
-        &mut self,
-        color: String,
-        opacity: f32,
-        target_size: usize,
-    ) -> Shape {
+    fn generate_center_shape(&mut self, color: String, opacity: f32, target_size: usize) -> Shape {
         let mut shape = Shape::new(color, opacity);
         let total_cells = self.grid.cell_count();
 
@@ -719,33 +736,33 @@ impl<'a> ShapeGenerator<'a> {
 
         // Start with a cell near center, but not always the exact center
         let start_idx = if self.rng.gen::<f32>() < 0.8 {
-            0  // 80% chance to use the center
+            0 // 80% chance to use the center
         } else {
             self.rng.gen_range(0..center_cells.len().min(3))
         };
-        
+
         let start_cell = center_cells[start_idx];
         shape.add_cell(start_cell);
 
         // Maximum attempts to reach target size
         let max_attempts = target_size * 3;
         let mut attempts = 0;
-        
+
         // Randomness factor for this shape
         let randomness = self.rng.gen_range(0.1..0.4);
-        
+
         // Use a breadth-first approach for uniform growth from center
         let mut queue = VecDeque::new();
         queue.push_back(start_cell);
-        
+
         let mut visited = HashSet::new();
         visited.insert(start_cell);
-        
+
         while shape.cell_count() < target_size && attempts < max_attempts && !queue.is_empty() {
             attempts += 1;
-            
+
             let current_cell = queue.pop_front().unwrap();
-            
+
             // Find candidates among adjacent cells
             let mut candidates = Vec::new();
             for &adj_id in &self.grid.adjacent_cells(current_cell) {
@@ -754,7 +771,7 @@ impl<'a> ShapeGenerator<'a> {
                     visited.insert(adj_id);
                 }
             }
-            
+
             // Sometimes shuffle candidates for more variety
             if self.rng.gen::<f32>() < randomness {
                 candidates.shuffle(&mut self.rng);
@@ -764,10 +781,12 @@ impl<'a> ShapeGenerator<'a> {
                     let score_a = self.score_candidate_cell(&shape, a);
                     let score_b = self.score_candidate_cell(&shape, b);
                     // Higher score is better
-                    score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
+                    score_b
+                        .partial_cmp(&score_a)
+                        .unwrap_or(std::cmp::Ordering::Equal)
                 });
             }
-            
+
             // Add candidates to shape
             for candidate in candidates {
                 if shape.cell_count() < target_size {
@@ -778,12 +797,12 @@ impl<'a> ShapeGenerator<'a> {
                 }
             }
         }
-        
+
         // Apply smoothing (but not always)
         if self.rng.gen::<f32>() > randomness {
             self.smooth_shape(&mut shape, target_size);
         }
-        
+
         shape
     }
 
@@ -802,9 +821,7 @@ impl<'a> ShapeGenerator<'a> {
 
         // Return all cell IDs sorted by distance from center
         // This is critical for growing from center outward in a structured way
-        cells_by_distance.iter()
-            .map(|(id, _)| *id)
-            .collect()
+        cells_by_distance.iter().map(|(id, _)| *id).collect()
     }
 
     /// Generates a shape that connects to existing shapes and grows outward
@@ -829,19 +846,30 @@ impl<'a> ShapeGenerator<'a> {
         let mut boundary_cells = self.find_boundary_cells(used_cells);
         if boundary_cells.is_empty() {
             // Fall back to random placement if no boundary cells found
-            return self.generate_shape_avoiding_cells(color_clone, opacity, target_size, used_cells);
+            return self.generate_shape_avoiding_cells(
+                color_clone,
+                opacity,
+                target_size,
+                used_cells,
+            );
         }
 
         // Add randomness to choice of starting cell
         boundary_cells.shuffle(&mut self.rng);
-        
+
         // Sort by distance to center but with randomness
         if self.rng.gen::<f32>() < 0.7 {
             let center_cells = self.find_center_cells();
             boundary_cells.sort_by(|&a, &b| {
                 // Find position in center_cells (lower index = closer to center)
-                let pos_a = center_cells.iter().position(|&x| x == a).unwrap_or(usize::MAX);
-                let pos_b = center_cells.iter().position(|&x| x == b).unwrap_or(usize::MAX);
+                let pos_a = center_cells
+                    .iter()
+                    .position(|&x| x == a)
+                    .unwrap_or(usize::MAX);
+                let pos_b = center_cells
+                    .iter()
+                    .position(|&x| x == b)
+                    .unwrap_or(usize::MAX);
                 pos_a.cmp(&pos_b)
             });
         }
@@ -854,31 +882,34 @@ impl<'a> ShapeGenerator<'a> {
         // Maximum attempts to reach target size
         let max_attempts = target_size * 3;
         let mut attempts = 0;
-        
+
         // Randomness factor
         let randomness = self.rng.gen_range(0.1..0.4);
-        
+
         // Use a breadth-first approach for balanced growth
         let mut queue = VecDeque::new();
         queue.push_back(start_cell);
-        
+
         let mut visited = HashSet::new();
         visited.insert(start_cell);
-        
+
         while shape.cell_count() < target_size && attempts < max_attempts && !queue.is_empty() {
             attempts += 1;
-            
+
             let current_cell = queue.pop_front().unwrap();
-            
+
             // Find adjacent cells not in the shape and not already used
             let mut candidates = Vec::new();
             for &adj_id in &self.grid.adjacent_cells(current_cell) {
-                if !shape.contains_cell(adj_id) && !used_cells.contains(&adj_id) && !visited.contains(&adj_id) {
+                if !shape.contains_cell(adj_id)
+                    && !used_cells.contains(&adj_id)
+                    && !visited.contains(&adj_id)
+                {
                     candidates.push(adj_id);
                     visited.insert(adj_id);
                 }
             }
-            
+
             // Sometimes shuffle for true randomness
             if self.rng.gen::<f32>() < randomness {
                 candidates.shuffle(&mut self.rng);
@@ -888,10 +919,12 @@ impl<'a> ShapeGenerator<'a> {
                     let score_a = self.score_candidate_cell(&shape, a);
                     let score_b = self.score_candidate_cell(&shape, b);
                     // Higher score is better
-                    score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
+                    score_b
+                        .partial_cmp(&score_a)
+                        .unwrap_or(std::cmp::Ordering::Equal)
                 });
             }
-            
+
             // Add candidates that improve shape quality
             for candidate in candidates {
                 if shape.cell_count() < target_size {
@@ -902,12 +935,12 @@ impl<'a> ShapeGenerator<'a> {
                 }
             }
         }
-        
+
         // Apply smoothing (but not always)
         if self.rng.gen::<f32>() > randomness {
             self.smooth_shape(&mut shape, target_size);
         }
-        
+
         shape
     }
 
@@ -944,7 +977,7 @@ impl<'a> ShapeGenerator<'a> {
 
         // Get all cells sorted by distance from center
         let center_cells = self.find_center_cells();
-        
+
         // Find the first unused cell that is closest to the center
         let mut start_cell = None;
         for &cell_id in &center_cells {
@@ -965,31 +998,34 @@ impl<'a> ShapeGenerator<'a> {
         // Maximum attempts to reach target size
         let max_attempts = target_size * 3;
         let mut attempts = 0;
-        
+
         // Randomness factor
         let randomness = self.rng.gen_range(0.1..0.4);
-        
+
         // Use a breadth-first approach for balanced growth
         let mut queue = VecDeque::new();
         queue.push_back(start_cell);
-        
+
         let mut visited = HashSet::new();
         visited.insert(start_cell);
-        
+
         while shape.cell_count() < target_size && attempts < max_attempts && !queue.is_empty() {
             attempts += 1;
-            
+
             let current_cell = queue.pop_front().unwrap();
-            
+
             // Find adjacent cells not in the shape and not already used
             let mut candidates = Vec::new();
             for &adj_id in &self.grid.adjacent_cells(current_cell) {
-                if !shape.contains_cell(adj_id) && !used_cells.contains(&adj_id) && !visited.contains(&adj_id) {
+                if !shape.contains_cell(adj_id)
+                    && !used_cells.contains(&adj_id)
+                    && !visited.contains(&adj_id)
+                {
                     candidates.push(adj_id);
                     visited.insert(adj_id);
                 }
             }
-            
+
             // Sometimes shuffle for more randomness
             if self.rng.gen::<f32>() < randomness {
                 candidates.shuffle(&mut self.rng);
@@ -999,10 +1035,12 @@ impl<'a> ShapeGenerator<'a> {
                     let score_a = self.score_candidate_cell(&shape, a);
                     let score_b = self.score_candidate_cell(&shape, b);
                     // Higher score is better
-                    score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
+                    score_b
+                        .partial_cmp(&score_a)
+                        .unwrap_or(std::cmp::Ordering::Equal)
                 });
             }
-            
+
             // Add candidates that improve shape quality
             for candidate in candidates {
                 if shape.cell_count() < target_size {
@@ -1013,12 +1051,12 @@ impl<'a> ShapeGenerator<'a> {
                 }
             }
         }
-        
+
         // Apply smoothing (but not always)
         if self.rng.gen::<f32>() > randomness {
             self.smooth_shape(&mut shape, target_size);
         }
-        
+
         shape
     }
 }
@@ -1063,13 +1101,13 @@ mod tests {
     fn test_find_center_cells() {
         let grid = TriangularGrid::new(100.0, 4);
         let generator = ShapeGenerator::new(&grid, Some(42)); // Fixed seed for deterministic testing
-        
+
         let center_cells = generator.find_center_cells();
-        
+
         // Should find some cells near the center
         assert!(!center_cells.is_empty());
     }
-    
+
     #[test]
     fn test_generate_center_shape() {
         let grid = TriangularGrid::new(100.0, 4);
@@ -1126,7 +1164,7 @@ mod tests {
             assert!(shape.cell_count() >= size_range.0 || shape.cell_count() <= size_range.1);
         }
     }
-    
+
     #[test]
     fn test_evaluate_shape_quality() {
         let grid = TriangularGrid::new(100.0, 4);
@@ -1138,17 +1176,17 @@ mod tests {
 
         let shape = generator.generate_balanced_shape(color, opacity, size);
         let metrics = generator.evaluate_shape_quality(&shape);
-        
+
         // Basic sanity checks on the metrics
         assert!(metrics.compactness >= 0.0 && metrics.compactness <= 1.0);
         assert!(metrics.smoothness >= 0.0 && metrics.smoothness <= 1.0);
         assert!(metrics.balance >= 0.0 && metrics.balance <= 1.0);
-        
+
         // Total score should be in valid range
         let total = metrics.total_score();
         assert!(total >= 0.0 && total <= 1.0);
     }
-    
+
     #[test]
     fn test_shape_smoothing() {
         let grid = TriangularGrid::new(100.0, 4);
@@ -1162,7 +1200,7 @@ mod tests {
         let mut shape = Shape::new(color.clone(), opacity);
         let start_cell = generator.find_center_cells()[0];
         shape.add_cell(start_cell);
-        
+
         // Add some cells in an angular pattern
         let adjacent = grid.adjacent_cells(start_cell);
         for (i, &adj) in adjacent.iter().enumerate() {
@@ -1170,18 +1208,18 @@ mod tests {
                 shape.add_cell(adj);
             }
         }
-        
+
         // Apply smoothing
         let original_count = shape.cell_count();
         generator.smooth_shape(&mut shape, size);
-        
+
         // Should have added some cells
         assert!(shape.cell_count() >= original_count);
-        
+
         // Should not exceed target size
         assert!(shape.cell_count() <= size);
     }
-    
+
     #[test]
     fn test_angular_shape() {
         let grid = TriangularGrid::new(100.0, 4);
@@ -1196,12 +1234,12 @@ mod tests {
         // Shape should have cells
         assert!(!shape.cells.is_empty());
         assert!(shape.cell_count() <= target_size);
-        
+
         // Test with extreme case - zero target size
         let shape = generator.generate_angular_shape("#00FF00".to_string(), 0.5, 0);
         assert_eq!(shape.cell_count(), 0);
     }
-    
+
     #[test]
     fn test_boundary_cells() {
         let grid = TriangularGrid::new(100.0, 4);
@@ -1212,19 +1250,19 @@ mod tests {
         used_cells.insert(0);
         used_cells.insert(1);
         used_cells.insert(2);
-        
+
         // Find boundary cells
         let boundary = generator.find_boundary_cells(&used_cells);
-        
+
         // Should have found some boundary cells
         assert!(!boundary.is_empty());
-        
+
         // Boundary cells should not include any used cells
         for &cell_id in &boundary {
             assert!(!used_cells.contains(&cell_id));
         }
     }
-    
+
     #[test]
     fn test_shape_avoiding_cells() {
         let grid = TriangularGrid::new(100.0, 4);
@@ -1233,34 +1271,36 @@ mod tests {
         let color = "#FF0000".to_string();
         let opacity = 0.8;
         let target_size = 10;
-        
+
         // Create a set of used cells
         let mut used_cells = HashSet::new();
         used_cells.insert(0); // Use the center cell
-        
+
         // Generate a shape avoiding used cells
-        let shape = generator.generate_shape_avoiding_cells(color, opacity, target_size, &used_cells);
-        
+        let shape =
+            generator.generate_shape_avoiding_cells(color, opacity, target_size, &used_cells);
+
         // Shape should have cells
         assert!(!shape.cells.is_empty());
         assert!(shape.cell_count() <= target_size);
-        
+
         // Shape should not include any used cells
         for &cell_id in &shape.cells {
             assert!(!used_cells.contains(&cell_id));
         }
-        
+
         // Test with all cells used
         let mut all_used = HashSet::new();
         for i in 0..grid.cell_count() {
             all_used.insert(i);
         }
-        
-        let shape = generator.generate_shape_avoiding_cells("#00FF00".to_string(), 0.5, 5, &all_used);
+
+        let shape =
+            generator.generate_shape_avoiding_cells("#00FF00".to_string(), 0.5, 5, &all_used);
         // Should be empty since no cells are available
         assert_eq!(shape.cell_count(), 0);
     }
-    
+
     #[test]
     fn test_balanced_shape() {
         let grid = TriangularGrid::new(100.0, 4);
@@ -1275,7 +1315,7 @@ mod tests {
         // Shape should have cells
         assert!(!shape.cells.is_empty());
         assert!(shape.cell_count() <= target_size);
-        
+
         // Test with entropy-based RNG
         let mut generator = ShapeGenerator::new(&grid, None); // No seed, use entropy
         let shape = generator.generate_balanced_shape("#00FF00".to_string(), 0.5, 8);

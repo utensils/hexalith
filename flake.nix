@@ -227,25 +227,65 @@
           devshell.startup.menu.text = "menu";
         };
 
-        packages.default = pkgs.rustPlatform.buildRustPackage {
-          pname = "hexlogogen";
-          version = "0.1.0";
-          src = ./.;
-          cargoLock = {
-            lockFileContents = builtins.readFile ./Cargo.lock;
-          };
-          
-          nativeBuildInputs = nativeBuildInputs;
-          buildInputs = buildInputs;
-
-          # Set the default binary to run
-          meta = with pkgs.lib; {
-            description = "Modern geometric logo generator in Rust";
-            homepage = "https://github.com/utensils/hexalith";
-            license = licenses.mit;
-            maintainers = [];
-            mainProgram = "hexlogogen";
-          };
+        # Create simple wrapper scripts that use cargo to run the binaries
+        
+        # Default CLI application
+        apps.default = {
+          type = "app";
+          program = toString (pkgs.writeShellScript "hexalith-cli" ''
+            export PATH="${pkgs.git}/bin:$PATH"
+            
+            # Check if we are already in a repo
+            if [ -d "$PWD/.git" ] && [ -f "$PWD/Cargo.toml" ] && grep -q "name = \"hexlogogen\"" "$PWD/Cargo.toml"; then
+              echo "Running from existing hexalith repository"
+              REPO_DIR="$PWD"
+            else
+              # Create temporary directory
+              REPO_DIR=$(mktemp -d)
+              
+              # Clean up on exit
+              trap "rm -rf $REPO_DIR" EXIT
+              
+              echo "Cloning hexalith repository to $REPO_DIR..."
+              ${pkgs.git}/bin/git clone --depth 1 https://github.com/utensils/hexalith.git "$REPO_DIR" >/dev/null 2>&1
+              
+              cd "$REPO_DIR"
+            fi
+            
+            echo "Generating logo..."
+            ${rustToolchain}/bin/cargo run --bin hexlogogen -- --format svg --verbose logo.svg "$@"
+          '');
+        };
+        
+        # CLI as a named app
+        apps.cli = self.apps.${system}.default;
+        
+        # Web interface as a named app
+        apps.web = {
+          type = "app";
+          program = toString (pkgs.writeShellScript "hexalith-web" ''
+            export PATH="${pkgs.git}/bin:$PATH"
+            
+            # Check if we are already in a repo
+            if [ -d "$PWD/.git" ] && [ -f "$PWD/Cargo.toml" ] && grep -q "name = \"hexlogogen\"" "$PWD/Cargo.toml"; then
+              echo "Running from existing hexalith repository"
+              REPO_DIR="$PWD"
+            else
+              # Create temporary directory
+              REPO_DIR=$(mktemp -d)
+              
+              # Clean up on exit
+              trap "rm -rf $REPO_DIR" EXIT
+              
+              echo "Cloning hexalith repository to $REPO_DIR..."
+              ${pkgs.git}/bin/git clone --depth 1 https://github.com/utensils/hexalith.git "$REPO_DIR" >/dev/null 2>&1
+              
+              cd "$REPO_DIR"
+            fi
+            
+            echo "Starting web interface..."
+            ${rustToolchain}/bin/cargo run --bin hexweb
+          '');
         };
       }
     );

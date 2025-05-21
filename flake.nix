@@ -231,16 +231,20 @@
           pname = "hexlogogen";
           version = "0.1.0";
           src = ./.;
-          cargoLock.lockFile = ./Cargo.lock;
+          cargoLock = {
+            lockFileContents = builtins.readFile ./Cargo.lock;
+          };
           
           nativeBuildInputs = nativeBuildInputs;
           buildInputs = buildInputs;
 
+          # Set the default binary to run
           meta = with pkgs.lib; {
             description = "Modern geometric logo generator in Rust";
             homepage = "https://github.com/utensils/hexalith";
             license = licenses.mit;
             maintainers = [];
+            mainProgram = "hexlogogen";
           };
         };
       }

@@ -20,6 +20,7 @@ Hexalith (HexLogoGen) is a command-line tool that generates random, geometric lo
 - **PNG Output**: Supports PNG generation with transparency
 - **Deterministic Mode**: Generate the same logo consistently with the same seed or UUID
 - **Customization Options**: Customize themes, opacity, and grid density
+- **Web Interface**: Includes a built-in web interface for rapid logo design
 
 ## Installation
 
@@ -36,6 +37,8 @@ nix run github:utensils/hexalith
 ```
 
 ## Usage
+
+### Command Line Interface
 
 ```
 Usage: hexlogogen [OPTIONS] [OUTPUT]
@@ -103,6 +106,34 @@ Use a UUID for deterministic generation:
 ```bash
 hexlogogen --uuid f47ac10b-58cc-4372-a567-0e02b2c3d479 logo.svg
 ```
+
+### Web Interface
+
+Hexalith also includes a web interface for rapid logo design and experimentation. The web interface provides a visual way to adjust parameters and immediately see the results.
+
+To run the web interface:
+
+```bash
+# Using cargo
+cargo run --bin hexweb
+
+# Using nix
+nix develop -c web-run
+```
+
+This will start a web server at http://localhost:3000 where you can:
+
+- Adjust all logo parameters in real-time
+- See immediate previews of your changes
+- Generate random logos with different seeds
+- Download SVG files of your designs
+- Save your favorite designs for reference
+
+The web interface is particularly useful for:
+- Quickly experimenting with different parameters
+- Finding the perfect color theme for your project
+- Testing how grid density affects design complexity
+- Comparing multiple logo variations side by side
 
 ## Development
 
@@ -198,6 +229,7 @@ grcov . --binary-path ./target/debug/deps/ \
 - `src/svg/`: SVG output generation
 - `src/png/`: PNG conversion from SVG
 - `src/cli/`: Command line interface handling
+- `src/web/`: Web interface implementation
 
 ## License
 

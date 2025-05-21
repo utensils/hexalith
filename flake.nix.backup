@@ -51,8 +51,6 @@
           grcov
           lcov
           nixpkgs-fmt
-          # Extra development tools for web server
-          nodePackages.prettier
         ];
 
       in rec {
@@ -73,12 +71,6 @@
               category = "development";
               help = "Build the project";
               command = "${rustToolchain}/bin/cargo build";
-            }
-            {
-              name = "web-run";
-              category = "web";
-              help = "Run the web interface";
-              command = "${rustToolchain}/bin/cargo run --bin hexweb";
             }
             {
               name = "rs-run";

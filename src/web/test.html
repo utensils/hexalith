@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript Test</title>
+</head>
+<body>
+    <h1>JavaScript Test Page</h1>
+    <p>This is a minimal test page to debug JavaScript issues.</p>
+    
+    <div>
+        <button id="test-btn">Test Button</button>
+    </div>
+    
+    <script>
+        // Simple test function
+        function testFunction() {
+            console.log('Button clicked!');
+            alert('JavaScript is working!');
+        }
+        
+        // Set up event listener
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded');
+            document.getElementById('test-btn').addEventListener('click', testFunction);
+        });
+    </script>
+</body>
+</html>

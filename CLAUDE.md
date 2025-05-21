@@ -29,9 +29,13 @@ hexalith/
 │   │   └── color/        # Color management
 │   ├── svg/              # SVG output generation
 │   ├── png/              # PNG conversion from SVG
+│   ├── web/              # Web interface implementation
+│   │   ├── routes.rs     # API endpoints
+│   │   └── templates.rs  # HTML templates
 │   ├── utils/            # Helper functions
 │   ├── lib.rs            # Library exports
-│   └── main.rs           # Application entry point
+│   ├── main.rs           # CLI application entry point
+│   └── web_main.rs       # Web interface entry point
 ├── tests/                # Integration tests
 └── examples/             # Example usages
 ```
@@ -41,12 +45,16 @@ hexalith/
 This project follows a modular architecture with the following components:
 
 1. **CLI Module**: Handles user input, argument parsing using Clap, and help documentation
-   - Processes command-line arguments like `--theme`, `--seed`, `--grid-size`, etc.
-   - Converts user input to the appropriate internal formats
-   - Provides helpful error messages and usage information
-   - Automatically corrects file extensions based on the selected format
 
-2. **Generator Module**: Core logic for creating logos
+2. **Web Interface Module**: Provides a browser-based UI for logo generation
+   - Uses Axum web framework for the backend
+   - Implements RESTful API endpoints for logo generation
+   - Provides HTML/CSS/JS frontend with Maud templates
+   - Enables real-time parameter adjustment and preview
+   - Supports history tracking and logo downloading
+   - Offers a more visual and interactive approach to logo design
+
+3. **Generator Module**: Core logic for creating logos
    - **Hexagon/Grid Generator**: Creates the base grid with triangular cells
      - Divides the hexagon into equilateral triangular cells
      - Ensures all triangles have equal 60-degree angles
@@ -67,24 +75,24 @@ This project follows a modular architecture with the following components:
      - Supports opacity settings for transparency effects
      - Implements color harmony algorithms for balanced designs
 
-3. **SVG Module**: Converts generated shapes to SVG format
+4. **SVG Module**: Converts generated shapes to SVG format
    - Creates clean, optimized SVG markup
    - Translates internal shape representations to SVG paths
    - Handles appropriate viewBox and sizing attributes
    - Creates efficient SVG with grouped paths for better performance
 
-4. **PNG Module**: Converts SVG to PNG when needed
+5. **PNG Module**: Converts SVG to PNG when needed
    - Renders SVG to bitmap format at specified dimensions
    - Maintains transparency and proper scaling
    - Uses resvg and tiny-skia for high-quality rendering
 
-5. **Utilities Module**: Helper functions, random number generation, etc.
+6. **Utilities Module**: Helper functions, random number generation, etc.
    - Provides consistent random number generation with seeding
    - Handles UUID parsing for deterministic generation
    - Offers various helper functions for the application
    - Implements time-based randomization for design variety
 
-6. **Library API**: Public API for integration with other Rust projects
+7. **Library API**: Public API for integration with other Rust projects
    - Exposes key functionality for use in other applications
    - Allows programmatic logo generation beyond the CLI
    - Provides a simple, well-documented interface
@@ -123,6 +131,11 @@ rs-run
 nix develop -c cargo run -- --seed 12345 --format png logo.png
 # Or use the devshell command:
 rs-run --seed 12345 --format png logo.png
+
+# Run the web interface
+nix develop -c cargo run --bin hexweb
+# Or use the devshell command:
+web-run
 
 # Run tests
 nix develop -c cargo test

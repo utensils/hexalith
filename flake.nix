@@ -31,7 +31,8 @@
           inherit system overlays;
         };
 
-        rustToolchain = pkgs.rust-bin.stable.latest.default.override {
+        # Use a specific stable Rust version rather than latest
+        rustToolchain = pkgs.rust-bin.stable."1.78.0".default.override {
           extensions = [ "rust-src" "rust-analyzer" "clippy" "rustfmt" "llvm-tools-preview" ];
           targets = [ ];
         };
@@ -235,24 +236,25 @@
           program = toString (pkgs.writeShellScript "hexalith-cli" ''
             export PATH="${pkgs.git}/bin:$PATH"
             
-            # Check if we are already in a repo
-            if [ -d "$PWD/.git" ] && [ -f "$PWD/Cargo.toml" ] && grep -q "name = \"hexlogogen\"" "$PWD/Cargo.toml"; then
-              echo "Running from existing hexalith repository"
-              REPO_DIR="$PWD"
-            else
-              # Create temporary directory
-              REPO_DIR=$(mktemp -d)
-              
-              # Clean up on exit
-              trap "rm -rf $REPO_DIR" EXIT
-              
-              echo "Cloning hexalith repository to $REPO_DIR..."
-              ${pkgs.git}/bin/git clone --depth 1 https://github.com/utensils/hexalith.git "$REPO_DIR" >/dev/null 2>&1
-              
-              cd "$REPO_DIR"
-            fi
+            # Always use a clean directory to avoid build conflicts
+            REPO_DIR=$(mktemp -d)
+            
+            # Clean up on exit
+            trap "rm -rf $REPO_DIR" EXIT
+            
+            echo "Cloning hexalith repository to temporary directory..."
+            ${pkgs.git}/bin/git clone --depth 1 https://github.com/utensils/hexalith.git "$REPO_DIR" >/dev/null 2>&1
+            
+            cd "$REPO_DIR"
             
             echo "Generating logo..."
+            # Clear any Rust environment variables that could interfere
+            unset RUSTFLAGS RUSTDOCFLAGS CARGO_RUSTFLAGS CARGO_UNSTABLE_SPARSE_REGISTRY RUSTC_BOOTSTRAP
+            
+            # Set clean environment
+            export CARGO_TERM_COLOR="always"
+            
+            # Run using the pinned stable toolchain
             ${rustToolchain}/bin/cargo run --bin hexlogogen -- --format svg --verbose logo.svg "$@"
           '');
         };
@@ -266,24 +268,25 @@
           program = toString (pkgs.writeShellScript "hexalith-web" ''
             export PATH="${pkgs.git}/bin:$PATH"
             
-            # Check if we are already in a repo
-            if [ -d "$PWD/.git" ] && [ -f "$PWD/Cargo.toml" ] && grep -q "name = \"hexlogogen\"" "$PWD/Cargo.toml"; then
-              echo "Running from existing hexalith repository"
-              REPO_DIR="$PWD"
-            else
-              # Create temporary directory
-              REPO_DIR=$(mktemp -d)
-              
-              # Clean up on exit
-              trap "rm -rf $REPO_DIR" EXIT
-              
-              echo "Cloning hexalith repository to $REPO_DIR..."
-              ${pkgs.git}/bin/git clone --depth 1 https://github.com/utensils/hexalith.git "$REPO_DIR" >/dev/null 2>&1
-              
-              cd "$REPO_DIR"
-            fi
+            # Always use a clean directory to avoid build conflicts
+            REPO_DIR=$(mktemp -d)
+            
+            # Clean up on exit
+            trap "rm -rf $REPO_DIR" EXIT
+            
+            echo "Cloning hexalith repository to temporary directory..."
+            ${pkgs.git}/bin/git clone --depth 1 https://github.com/utensils/hexalith.git "$REPO_DIR" >/dev/null 2>&1
+            
+            cd "$REPO_DIR"
             
             echo "Starting web interface..."
+            # Clear any Rust environment variables that could interfere
+            unset RUSTFLAGS RUSTDOCFLAGS CARGO_RUSTFLAGS CARGO_UNSTABLE_SPARSE_REGISTRY RUSTC_BOOTSTRAP
+            
+            # Set clean environment
+            export CARGO_TERM_COLOR="always"
+            
+            # Run using the pinned stable toolchain
             ${rustToolchain}/bin/cargo run --bin hexweb
           '');
         };

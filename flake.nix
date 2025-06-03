@@ -6,17 +6,11 @@
     flake-utils.url = "github:numtide/flake-utils";
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
-      inputs = {
-        nixpkgs.follows = "nixpkgs";
-        flake-utils.follows = "flake-utils";
-      };
+      inputs.nixpkgs.follows = "nixpkgs";
     };
     devshell = {
       url = "github:numtide/devshell";
-      inputs = {
-        nixpkgs.follows = "nixpkgs";
-        flake-utils.follows = "flake-utils";
-      };
+      inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
@@ -59,7 +53,15 @@
       in rec {
         devShells.default = pkgs.devshell.mkShell {
           name = "hexalith";
-          packages = buildInputs ++ nativeBuildInputs ++ devInputs;
+          packages = buildInputs ++ nativeBuildInputs ++ devInputs ++ (with pkgs; [
+            # Add essential shell utilities
+            bash
+            coreutils
+            findutils
+            gnugrep
+            gnused
+            which
+          ]);
           
           env = [
             { 
@@ -67,6 +69,16 @@
               value = "1"; 
             }
           ];
+          
+          # Add Claude CLI to PATH if it exists
+          devshell.startup.claude-path = {
+            deps = [];
+            text = ''
+              if [ -f "$HOME/.claude/local/claude" ]; then
+                export PATH="$HOME/.claude/local:$PATH"
+              fi
+            '';
+          };
 
           commands = [
             {
@@ -93,7 +105,7 @@
               help = "Generate a logo using default settings";
               command = ''
                 echo "Generating logo..."
-                ${rustToolchain}/bin/cargo run --bin hexlogogen -- --format svg --verbose logo.svg
+                ${rustToolchain}/bin/cargo run --bin hexalith -- --format svg --verbose logo.svg
               '';
             }
             {
@@ -225,7 +237,12 @@
           '';
           
           # Show menu automatically on shell entry
-          devshell.startup.menu.text = "menu";
+          devshell.startup.show-menu = {
+            deps = ["claude-path"];
+            text = ''
+              menu
+            '';
+          };
         };
 
         # Create simple wrapper scripts that use rustup to run the binaries
@@ -265,7 +282,7 @@
             
             echo "Generating logo..."
             # Run cargo directly from our clean environment
-            cargo run --bin hexlogogen -- --format svg --verbose logo.svg "$@"
+            cargo run --bin hexalith -- --format svg --verbose logo.svg "$@"
           '');
         };
         

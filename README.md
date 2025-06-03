@@ -14,20 +14,21 @@ Hexalith (HexLogoGen) is a command-line tool that generates random, geometric lo
 - **Connected Edges**: All triangles share edges with adjacent triangles for cohesive patterns
 - **Center-Out Growth**: All shapes grow from the center outward for balanced, harmonious designs
 - **Angular Style**: Default mode creates logos similar to the original hexagonal logo generator
+- **Classic Mode**: Fixed 24-triangle layout with 2 overlapping shapes for a distinctive geometric style
 - **Shape Overlapping**: By default, shapes overlap with color blending at intersections for richer designs
-- **Multiple Color Themes**: Choose from various color themes including Mesos (default), Google, Blues, Greens, Reds, Purples, and Rainbow
-- **SVG Output**: Generates clean, optimized SVG files
-- **PNG Output**: Supports PNG generation with transparency
+- **Multiple Color Themes**: Choose from various color themes including Classic (default), Google, Blues, Greens, Reds, Purples, and Rainbow
+- **SVG and PNG Output**: Generates clean, optimized SVG files or PNG images (PNG is default)
+- **Clipboard Support**: Copy logos directly to clipboard without saving files (CLI and web)
 - **Deterministic Mode**: Generate the same logo consistently with the same seed or UUID
 - **Customization Options**: Customize themes, opacity, and grid density
-- **Web Interface**: Includes a built-in web interface for rapid logo design
+- **Web Interface**: Includes a built-in web interface with PNG and SVG download options
 
 ## Installation
 
 ### Using Cargo
 
 ```bash
-cargo install hexlogogen
+cargo install hexalith
 ```
 
 ### Using Nix Flakes (No Installation Required)
@@ -50,70 +51,119 @@ nix run github:utensils/hexalith#web
 ### Command Line Interface
 
 ```
-Usage: hexlogogen [OPTIONS] [OUTPUT]
+Usage: hexalith [OPTIONS] [OUTPUT]
 
 Arguments:
-  [OUTPUT]  Output file path [default: logo.svg]
+  [OUTPUT]  Output file path [default: logo.png]
 
 Options:
   -s, --seed <SEED>            Seed for deterministic generation
   -u, --uuid <UUID>            UUID for deterministic generation (overrides seed)
-  -t, --theme <THEME>          Color theme [default: mesos] [possible values: mesos, google, blues, greens, reds, purples, rainbow]
-  -n, --shapes <SHAPES>        Number of shapes to generate [default: 3]
-  -g, --grid-size <GRID_SIZE>  Grid density (2-8) [default: 2]
+  -t, --theme <THEME>          Color theme [default: classic] [possible values: classic, google, blues, greens, reds, purples, rainbow]
+  -n, --shapes <SHAPES>        Number of shapes to generate [default: 4]
+  -g, --grid-size <GRID_SIZE>  Grid density (2-8) [default: 4]
   -o, --opacity <OPACITY>      Shape opacity [default: 0.8]
   --overlap                    Allow shapes to overlap with blended colors [default: true]
+  --unique-shapes              Generate unique shapes that don't necessarily grow from center
   -w, --width <WIDTH>          Output width in pixels (PNG only) [default: 512]
   -H, --height <HEIGHT>        Output height in pixels (PNG only) [default: 512]
-  -f, --format <FORMAT>        Output format [default: svg] [possible values: svg, png]
+  -f, --format <FORMAT>        Output format [default: png] [possible values: svg, png]
+  -c, --copy                   Copy to clipboard instead of saving to file
   -v, --verbose                Enable verbose output
+      --classic                Use classic style generation with fixed triangle layout
   -h, --help                   Print help
   -V, --version                Print version
 ```
 
 ## Examples
 
-Generate a random logo in SVG format:
+Generate a random logo (PNG by default):
 ```bash
-hexlogogen my-logo.svg
+hexalith
+```
+
+Generate a logo in SVG format:
+```bash
+hexalith -f svg my-logo.svg
 ```
 
 Generate a deterministic logo using a seed:
 ```bash
-hexlogogen --seed 12345 my-logo.svg
+hexalith --seed 12345 my-logo.png
+```
+
+Generate a classic style logo:
+```bash
+hexalith --classic logo.png
 ```
 
 Generate a PNG with custom dimensions:
 ```bash
-hexlogogen --format png --width 800 --height 800 my-logo.png
+hexalith --width 800 --height 800 my-logo.png
 ```
 
 Generate a logo with custom parameters:
 ```bash
-hexlogogen --grid-size 8 --shapes 5 --opacity 0.7 --verbose logo.svg
+hexalith --grid-size 8 --shapes 5 --opacity 0.7 --verbose logo.svg
+```
+
+Copy logo to clipboard instead of saving:
+```bash
+hexalith --copy --format svg
 ```
 
 Generate a logo with a specific color theme:
 ```bash
-hexlogogen --theme blues --seed 42 logo.svg
+hexalith --theme blues --seed 42 logo.svg
 ```
 
 Generate a logo without overlapping shapes:
 ```bash
-hexlogogen --no-overlap --seed 42 logo.svg
+hexalith --no-overlap --seed 42 logo.svg
+```
+
+Generate a classic style logo:
+```bash
+hexalith --classic --seed 42 logo.svg
+```
+
+Generate a classic logo with different theme:
+```bash
+hexalith --classic --theme google classic-logo.svg
 ```
 
 Try different color themes:
 ```bash
-hexlogogen --theme google logo_google.svg
-hexlogogen --theme rainbow logo_rainbow.svg
-hexlogogen --theme greens logo_green.svg
-hexlogogen --theme purples logo_purple.svg
+hexalith --theme google logo_google.svg
+hexalith --theme rainbow logo_rainbow.svg
+hexalith --theme greens logo_green.svg
+hexalith --theme purples logo_purple.svg
 ```
 
 Use a UUID for deterministic generation:
 ```bash
-hexlogogen --uuid f47ac10b-58cc-4372-a567-0e02b2c3d479 logo.svg
+hexalith --uuid f47ac10b-58cc-4372-a567-0e02b2c3d479 logo.svg
+```
+
+Copy logo directly to clipboard (no file created):
+```bash
+# Copy as PNG (default)
+hexalith --copy
+
+# Copy as SVG
+hexalith --copy --format svg
+
+# Copy with specific parameters
+hexalith --copy --theme rainbow --shapes 6
+```
+
+Generate classic style logo with fixed triangle layout:
+```bash
+# Classic mode uses exactly 2 shapes with 6-10 triangles each
+hexalith --classic --seed 42 logo.svg
+
+# Classic mode works well with smaller grid sizes
+hexalith --classic --grid-size 2 --theme google classic_logo.png
 ```
 
 ### Web Interface
@@ -139,6 +189,7 @@ This will start a web server at http://localhost:3000 where you can:
 - See immediate previews of your changes
 - Generate random logos with different seeds
 - Download SVG files of your designs
+- Copy logos directly to clipboard
 - Save your favorite designs for reference
 
 The web interface is particularly useful for:

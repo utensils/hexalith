@@ -160,7 +160,7 @@ pub fn index_page() -> Markup {
                             div class="form-group" {
                                 label for="theme" { "Color Theme" }
                                 select id="theme" name="theme" {
-                                    option value="mesos" selected { "Mesos (Default)" }
+                                    option value="classic" selected { "Classic (Default)" }
                                     option value="google" { "Google" }
                                     option value="blues" { "Blues" }
                                     option value="greens" { "Greens" }

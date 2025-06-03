@@ -1,5 +1,5 @@
 [package]
-name = "hexlogogen"
+name = "hexalith"
 version = "0.1.0"
 edition = "2021"
 description = "Modern geometric logo generator in Rust - creates unique hexagonal designs with minimal configuration"
@@ -18,6 +18,8 @@ rand_chacha = "0.3"
 tiny-skia = "0.11"
 resvg = "0.36"
 usvg = "0.36"
+arboard = "3.3"
+png = "0.17"
 
 # Web server dependencies
 axum = "0.7"
@@ -39,11 +41,11 @@ tower = { version = "0.4", features = ["util"] }
 http-body-util = "0.1"
 
 [lib]
-name = "hexlogogen"
+name = "hexalith"
 path = "src/lib.rs"
 
 [[bin]]
-name = "hexlogogen"
+name = "hexalith"
 path = "src/main.rs"
 
 [[bin]]

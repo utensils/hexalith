@@ -11,7 +11,7 @@ pub struct ColorManager {
 /// Available color themes for logo generation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Theme {
-    Mesos,   // Original Mesos style colors
+    Classic, // Classic color palette
     Google,  // Google brand colors
     Blues,   // Blue color theme
     Greens,  // Green color theme
@@ -23,7 +23,7 @@ pub enum Theme {
 impl std::fmt::Display for Theme {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Theme::Mesos => write!(f, "mesos"),
+            Theme::Classic => write!(f, "classic"),
             Theme::Google => write!(f, "google"),
             Theme::Blues => write!(f, "blues"),
             Theme::Greens => write!(f, "greens"),
@@ -37,14 +37,15 @@ impl std::fmt::Display for Theme {
 impl From<&str> for Theme {
     fn from(s: &str) -> Self {
         match s.to_lowercase().as_str() {
-            "mesos" => Theme::Mesos,
+            "classic" => Theme::Classic,
+            "mesos" => Theme::Classic, // Alias for backward compatibility
             "google" => Theme::Google,
             "blues" => Theme::Blues,
             "greens" => Theme::Greens,
             "reds" => Theme::Reds,
             "purples" => Theme::Purples,
             "rainbow" => Theme::Rainbow,
-            _ => Theme::Mesos, // Default to Mesos theme if unknown
+            _ => Theme::Classic, // Default to Classic theme if unknown
         }
     }
 }
@@ -87,7 +88,7 @@ impl ColorManager {
     /// Initialize with a specified theme
     pub fn with_theme(theme: Theme, seed: Option<u64>) -> Self {
         match theme {
-            Theme::Mesos => Self::mesos_theme(seed),
+            Theme::Classic => Self::classic_theme(seed),
             Theme::Google => Self::google_theme(seed),
             Theme::Blues => Self::blues_theme(seed),
             Theme::Greens => Self::greens_theme(seed),
@@ -104,17 +105,17 @@ impl ColorManager {
         Self::with_theme(theme, seed)
     }
 
-    /// Initialize with the default (Mesos) theme
+    /// Initialize with the default (Classic) theme
     #[allow(dead_code)]
     pub fn default(seed: Option<u64>) -> Self {
-        Self::mesos_theme(seed)
+        Self::classic_theme(seed)
     }
 
-    /// Mesos theme - original colors from the Mesos logo generator
-    pub fn mesos_theme(seed: Option<u64>) -> Self {
+    /// Classic theme - vibrant colors for geometric logos
+    pub fn classic_theme(seed: Option<u64>) -> Self {
         Self::new(
             vec![
-                // Original hexagonal logo generator colors from the JS implementation
+                // Classic vibrant color palette
                 "#FFCC09".to_string(), // Yellow [255, 204, 9]
                 "#F68A21".to_string(), // Orange [246, 138, 33]
                 "#E42728".to_string(), // Red [228, 39, 43]
@@ -527,7 +528,7 @@ impl ColorManager {
     }
 
     pub fn rgb_to_hex(r: u8, g: u8, b: u8) -> String {
-        format!("#{:02X}{:02X}{:02X}", r, g, b)
+        format!("#{r:02X}{g:02X}{b:02X}")
     }
 
     /// Blend two colors together with a given opacity

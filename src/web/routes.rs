@@ -144,7 +144,7 @@ async fn direct_handler() -> impl IntoResponse {
                 <div class="form-group">
                     <label for="theme">Color Theme</label>
                     <select id="theme" name="theme">
-                        <option value="mesos" selected>Mesos (Default)</option>
+                        <option value="classic" selected>Classic (Default)</option>
                         <option value="google">Google</option>
                         <option value="blues">Blues</option>
                         <option value="greens">Greens</option>
@@ -183,6 +183,17 @@ async fn direct_handler() -> impl IntoResponse {
                     <label for="overlap">Allow shape overlap</label>
                 </div>
                 
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="unique-shapes" name="unique_shapes">
+                    <label for="unique-shapes">Generate unique non-center shapes</label>
+                </div>
+                
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="classic" name="classic">
+                    <label for="classic">Classic mode (fixed triangles with 2 shapes)</label>
+                </div>
+                
+                
                 <div class="form-group">
                     <label for="seed">Seed (empty = new random seed each time)</label>
                     <input type="text" id="seed" name="seed" value="" placeholder="Enter number to reuse a design">
@@ -190,7 +201,9 @@ async fn direct_handler() -> impl IntoResponse {
                 
                 <div class="button-group">
                     <button type="button" id="generate-btn">Generate Logo</button>
-                    <button type="button" id="download-btn" class="button-secondary">Download SVG</button>
+                    <button type="button" id="download-png-btn" class="button-secondary">Download PNG</button>
+                    <button type="button" id="download-svg-btn" class="button-secondary">Download SVG</button>
+                    <button type="button" id="copy-btn" class="button-secondary">Copy to Clipboard</button>
                 </div>
             </form>
         </div>
@@ -235,7 +248,9 @@ async fn direct_handler() -> impl IntoResponse {
             
             // Set up button event listeners
             document.getElementById('generate-btn').addEventListener('click', generateLogo);
-            document.getElementById('download-btn').addEventListener('click', downloadSvg);
+            document.getElementById('download-png-btn').addEventListener('click', downloadPng);
+            document.getElementById('download-svg-btn').addEventListener('click', downloadSvg);
+            document.getElementById('copy-btn').addEventListener('click', copyToClipboard);
             
             // Generate a random logo on page load
             setTimeout(generateLogo, 300);
@@ -263,6 +278,17 @@ async fn direct_handler() -> impl IntoResponse {
             if (document.getElementById('overlap').checked) {
                 params.overlap = true;
             }
+            
+            // Handle unique shapes
+            if (document.getElementById('unique-shapes').checked) {
+                params.unique_shapes = true;
+            }
+            
+            // Handle classic mode
+            if (document.getElementById('classic').checked) {
+                params.classic = true;
+            }
+            
             
             // Handle seed parameter - only use a specific seed if provided and valid
             const seedInput = document.getElementById('seed');
@@ -335,6 +361,8 @@ async fn direct_handler() -> impl IntoResponse {
                     <p><strong>Shapes:</strong> ${params.shapes}</p>
                     <p><strong>Opacity:</strong> ${params.opacity}</p>
                     <p><strong>Overlap:</strong> ${params.overlap ? 'Yes' : 'No'}</p>
+                    <p><strong>Unique Shapes:</strong> ${params.unique_shapes ? 'Yes' : 'No'}</p>
+                    <p><strong>Classic Mode:</strong> ${params.classic ? 'Yes' : 'No'}</p>
                     <p><strong>Image URL:</strong> <a href="${svgUrl}" target="_blank">View SVG Directly</a></p>
                 `;
                 
@@ -344,6 +372,64 @@ async fn direct_handler() -> impl IntoResponse {
             }
         }
         
+        
+        // Download the current logo as PNG
+        async function downloadPng() {
+            console.log('Download PNG button clicked');
+            const previewImg = document.getElementById('logo-preview');
+            const svgUrl = previewImg.src;
+            
+            if (!svgUrl) {
+                alert('No logo has been generated yet.');
+                return;
+            }
+            
+            try {
+                // Fetch the SVG content
+                const response = await fetch(svgUrl);
+                const svgContent = await response.text();
+                
+                // Create an image from the SVG
+                const img = new Image();
+                const svgBlob = new Blob([svgContent], { type: 'image/svg+xml' });
+                const url = URL.createObjectURL(svgBlob);
+                
+                img.onload = function() {
+                    // Create a canvas with the same dimensions
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 512;
+                    canvas.height = 512;
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Draw the image on the canvas
+                    ctx.drawImage(img, 0, 0, 512, 512);
+                    
+                    // Convert canvas to blob
+                    canvas.toBlob(function(blob) {
+                        const pngUrl = URL.createObjectURL(blob);
+                        
+                        // Create a temporary link and trigger download
+                        const a = document.createElement('a');
+                        a.href = pngUrl;
+                        a.download = `hexalith_logo_${document.getElementById('seed').value || 'random'}.png`;
+                        document.body.appendChild(a);
+                        a.click();
+                        
+                        // Clean up
+                        setTimeout(() => {
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(pngUrl);
+                            URL.revokeObjectURL(url);
+                        }, 100);
+                    }, 'image/png');
+                };
+                
+                img.src = url;
+            } catch (error) {
+                console.error('Error downloading PNG:', error);
+                alert('Failed to download PNG: ' + error.message);
+            }
+        }
         
         // Download the current SVG
         function downloadSvg() {
@@ -367,7 +453,7 @@ async fn direct_handler() -> impl IntoResponse {
                     // Create a temporary link and trigger download
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = `hexalith_logo_${document.getElementById('seed').value}.svg`;
+                    a.download = `hexalith_logo_${document.getElementById('seed').value || 'random'}.svg`;
                     document.body.appendChild(a);
                     a.click();
                     
@@ -382,6 +468,50 @@ async fn direct_handler() -> impl IntoResponse {
                     alert('Failed to download SVG: ' + error.message);
                 });
         }
+        
+        // Copy SVG to clipboard
+        async function copyToClipboard() {
+            console.log('Copy to clipboard button clicked');
+            const previewImg = document.getElementById('logo-preview');
+            const svgUrl = previewImg.src;
+            
+            if (!svgUrl) {
+                alert('No logo has been generated yet.');
+                return;
+            }
+            
+            try {
+                // Fetch the SVG content
+                const response = await fetch(svgUrl);
+                const svgContent = await response.text();
+                
+                // Try to copy as image first (for better app compatibility)
+                // Convert SVG to blob
+                const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+                
+                // Check if ClipboardItem is available (modern browsers)
+                if (window.ClipboardItem && navigator.clipboard.write) {
+                    try {
+                        const item = new ClipboardItem({ 'image/svg+xml': blob });
+                        await navigator.clipboard.write([item]);
+                        console.log('SVG copied as image to clipboard');
+                        alert('Logo copied to clipboard as image!');
+                        return;
+                    } catch (imageError) {
+                        console.log('Failed to copy as image, trying text fallback:', imageError);
+                    }
+                }
+                
+                // Fallback: copy as text
+                await navigator.clipboard.writeText(svgContent);
+                console.log('SVG copied as text to clipboard');
+                alert('Logo copied to clipboard as SVG text!');
+                
+            } catch (error) {
+                console.error('Error copying to clipboard:', error);
+                alert('Failed to copy to clipboard: ' + error.message);
+            }
+        }
     </script>
 </body>
 </html>"#;
@@ -393,11 +523,10 @@ async fn direct_handler() -> impl IntoResponse {
     )
 }
 
-
 pub fn create_router() -> Router {
     // Get the current directory where the binary is running
     let assets_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/web/assets");
-    
+
     // Create the router with our routes
     Router::new()
         .route("/", get(direct_handler)) // Main route with the working interface
@@ -407,7 +536,6 @@ pub fn create_router() -> Router {
         .nest_service("/assets", ServeDir::new(assets_path))
         .layer(CorsLayer::permissive())
 }
-
 
 async fn favicon_handler() -> impl IntoResponse {
     // Redirect to the SVG favicon
@@ -425,6 +553,10 @@ struct LogoParams {
     opacity: Option<f32>,
     #[serde(default)]
     overlap: Option<bool>, // From JS, it's a boolean
+    #[serde(default)]
+    unique_shapes: Option<bool>,
+    #[serde(default)]
+    classic: Option<bool>,
     #[serde(default, deserialize_with = "deserialize_seed")]
     seed: Option<u64>,
 }
@@ -436,7 +568,7 @@ where
 {
     // This type will catch both string values and null/absent values
     let opt = Option::<String>::deserialize(deserializer)?;
-    
+
     match opt {
         Some(s) if s.is_empty() => Ok(None), // Empty string becomes None
         Some(s) => {
@@ -444,12 +576,12 @@ where
             match s.parse::<u64>() {
                 Ok(val) => Ok(Some(val)),
                 Err(_) => {
-                    println!("Failed to parse seed: {}", s);
+                    println!("Failed to parse seed: {s}");
                     Ok(None) // If it fails to parse, return None
                 }
             }
-        },
-        None => Ok(None) // Null/absent value becomes None
+        }
+        None => Ok(None), // Null/absent value becomes None
     }
 }
 
@@ -458,27 +590,26 @@ struct LogoResponse {
     seed: u64,
 }
 
-
 // Regular handler with json
-async fn generate_logo_handler(
-    body: axum::body::Bytes
-) -> impl IntoResponse {
-    println!("Raw request body: {}", String::from_utf8_lossy(&body));
-    
+async fn generate_logo_handler(body: axum::body::Bytes) -> impl IntoResponse {
+    let body_str = String::from_utf8_lossy(&body);
+    println!("Raw request body: {body_str}");
+
     // Try to parse the request body directly
     let params: LogoParams = match serde_json::from_slice(&body) {
         Ok(p) => p,
         Err(e) => {
-            println!("Failed to parse JSON: {}", e);
+            println!("Failed to parse JSON: {e}");
             return (
                 axum::http::StatusCode::UNPROCESSABLE_ENTITY,
-                format!("Failed to parse JSON: {}", e)
-            ).into_response();
+                format!("Failed to parse JSON: {e}"),
+            )
+                .into_response();
         }
     };
-    
-    println!("Parsed params: {:?}", params);
-    
+
+    println!("Parsed params: {params:?}");
+
     // Use the provided seed or generate a random one
     let seed = params.seed.unwrap_or_else(|| {
         use std::time::{SystemTime, UNIX_EPOCH};
@@ -488,16 +619,20 @@ async fn generate_logo_handler(
             .as_secs();
         time ^ 0x12345678 // XOR with a constant for additional randomness
     });
-    
-    println!("Generated seed: {}", seed);
+
+    println!("Generated seed: {seed}");
 
     (
         axum::http::StatusCode::OK,
-        axum::Json(LogoResponse { seed })
-    ).into_response()
+        axum::Json(LogoResponse { seed }),
+    )
+        .into_response()
 }
 
-async fn get_svg_handler(Path(seed): Path<u64>, Query(params): Query<LogoParams>) -> impl IntoResponse {
+async fn get_svg_handler(
+    Path(seed): Path<u64>,
+    Query(params): Query<LogoParams>,
+) -> impl IntoResponse {
     // Set up the generator with the parameters from the query string
     let grid_size = params.grid_size.unwrap_or(4);
     let shapes = params.shapes.unwrap_or(4);
@@ -505,32 +640,38 @@ async fn get_svg_handler(Path(seed): Path<u64>, Query(params): Query<LogoParams>
     let theme = params.theme.unwrap_or_else(|| "mesos".to_string());
     // For the direct HTML version, overlap is now a boolean
     let overlap = params.overlap.unwrap_or(true);
-    
+    let unique_shapes = params.unique_shapes.unwrap_or(false);
+    let classic = params.classic.unwrap_or(false);
+
     // Debug output to server console
-    println!("Generating logo with: seed={}, grid_size={}, shapes={}, opacity={}, theme={}, overlap={}", 
-        seed, grid_size, shapes, opacity, theme, overlap);
+    println!("Generating logo with: seed={seed}, grid_size={grid_size}, shapes={shapes}, opacity={opacity}, theme={theme}, overlap={overlap}, unique_shapes={unique_shapes}, classic={classic}");
 
     // Create the generator
     let mut generator = Generator::new(grid_size, shapes, opacity, Some(seed));
     generator
         .set_color_scheme(&theme)
-        .set_allow_overlap(overlap);
+        .set_allow_overlap(overlap)
+        .set_unique_shapes(unique_shapes)
+        .set_classic_mode(classic);
 
     // Generate the logo
     if let Err(e) = generator.generate() {
-        println!("Error generating logo: {}", e);
+        println!("Error generating logo: {e}");
         return (
             axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Error generating logo: {}", e),
-        ).into_response();
+            format!("Error generating logo: {e}"),
+        )
+            .into_response();
     }
-    
-    println!("Logo generation successful, generated {} shapes", generator.shapes().len());
+
+    let shape_count = generator.shapes().len();
+    println!("Logo generation successful, generated {shape_count} shapes");
 
     // Generate SVG
     match svg::generate_svg(&generator, 512, 512) {
         Ok(svg_data) => {
-            println!("SVG generation successful, size: {} bytes", svg_data.len());
+            let svg_size = svg_data.len();
+            println!("SVG generation successful, size: {svg_size} bytes");
             (
                 axum::http::StatusCode::OK,
                 [
@@ -538,14 +679,16 @@ async fn get_svg_handler(Path(seed): Path<u64>, Query(params): Query<LogoParams>
                     ("Cache-Control", "public, max-age=86400"), // Cache for a day
                 ],
                 svg_data,
-            ).into_response()
+            )
+                .into_response()
         }
         Err(e) => {
-            println!("Error generating SVG: {}", e);
+            println!("Error generating SVG: {e}");
             (
                 axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Error generating SVG: {}", e),
-            ).into_response()
+                format!("Error generating SVG: {e}"),
+            )
+                .into_response()
         }
     }
 }

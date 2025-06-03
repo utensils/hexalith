@@ -4,35 +4,81 @@ use crate::Result;
 use std::fs;
 use std::path::Path;
 use svg::node::element::path::Data;
-use svg::node::element::Path as SvgPath;
+use svg::node::element::{Path as SvgPath, Polygon};
 use svg::Document;
 
 /// Converts the generator output to SVG format
 pub fn generate_svg(generator: &Generator, width: u32, height: u32) -> Result<String> {
-    let grid = match generator.grid() {
-        Some(grid) => grid,
-        None => return Err("Grid not initialized. Call generate() first.".into()),
-    };
+    // Check if we're in classic mode
+    if generator.classic_generator().is_some() {
+        generate_classic_svg(generator, width, height)
+    } else {
+        // Modern mode
+        let grid = match generator.grid() {
+            Some(grid) => grid,
+            None => return Err("Grid not initialized. Call generate() first.".into()),
+        };
 
-    // Create an SVG document
+        // Create an SVG document
+        let mut document = Document::new()
+            .set("viewBox", (-100, -100, 200, 200))
+            .set("width", width)
+            .set("height", height);
+
+        // We don't add the hexagonal boundary anymore to avoid having a border
+
+        // Create a group for each shape
+        for shape in generator.shapes() {
+            let path_data = create_shape_path(grid, shape.cells.as_slice());
+
+            let shape_path = SvgPath::new()
+                .set("d", path_data)
+                .set("fill", shape.color.clone())
+                .set("fill-opacity", shape.opacity)
+                .set("stroke", "none");
+
+            document = document.add(shape_path);
+        }
+
+        Ok(document.to_string())
+    }
+}
+
+/// Generates SVG for classic mode with fixed triangle layout
+fn generate_classic_svg(generator: &Generator, width: u32, height: u32) -> Result<String> {
+    // Create an SVG document with classic dimensions
     let mut document = Document::new()
-        .set("viewBox", (-100, -100, 200, 200))
+        .set("viewBox", (0, 0, 448, 520))
         .set("width", width)
         .set("height", height);
 
-    // We don't add the hexagonal boundary anymore to avoid having a border
+    // Get the triangle vertices
+    let triangle_vertices = crate::generator::classic::ClassicGenerator::get_triangle_vertices();
 
-    // Create a group for each shape
+    // Draw each shape
     for shape in generator.shapes() {
-        let path_data = create_shape_path(grid, shape.cells.as_slice());
+        for &triangle_id in &shape.cells {
+            if let Some(vertices) = triangle_vertices.get(triangle_id) {
+                // Create polygon for this triangle
+                let points = format!(
+                    "{},{} {},{} {},{}",
+                    vertices[0].0,
+                    vertices[0].1,
+                    vertices[1].0,
+                    vertices[1].1,
+                    vertices[2].0,
+                    vertices[2].1
+                );
 
-        let shape_path = SvgPath::new()
-            .set("d", path_data)
-            .set("fill", shape.color.clone())
-            .set("fill-opacity", shape.opacity)
-            .set("stroke", "none");
+                let polygon = Polygon::new()
+                    .set("points", points)
+                    .set("fill", shape.color.clone())
+                    .set("fill-opacity", shape.opacity)
+                    .set("stroke", "none");
 
-        document = document.add(shape_path);
+                document = document.add(polygon);
+            }
+        }
     }
 
     Ok(document.to_string())

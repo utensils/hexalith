@@ -1,3 +1,4 @@
+use crate::clipboard;
 use crate::generator::Generator;
 use crate::png;
 use crate::svg;
@@ -15,7 +16,7 @@ use std::path::PathBuf;
 )]
 pub struct Cli {
     /// Output file path
-    #[arg(default_value = "logo.svg")]
+    #[arg(default_value = "logo.png")]
     pub output: String,
 
     /// Seed for deterministic generation
@@ -26,8 +27,8 @@ pub struct Cli {
     #[arg(short, long)]
     pub uuid: Option<String>,
 
-    /// Color theme (mesos, google, blues, greens, reds, purples, rainbow)
-    #[arg(short = 't', long = "theme", default_value = "mesos")]
+    /// Color theme (classic, google, blues, greens, reds, purples, rainbow)
+    #[arg(short = 't', long = "theme", default_value = "classic")]
     pub theme: String,
 
     /// Number of shapes to generate
@@ -51,16 +52,28 @@ pub struct Cli {
     pub height: u32,
 
     /// Output format
-    #[arg(short, long, value_enum, default_value_t = Format::Svg)]
+    #[arg(short, long, value_enum, default_value_t = Format::Png)]
     pub format: Format,
 
     /// Allow shapes to overlap with blended colors
     #[arg(long, default_value_t = true)]
     pub overlap: bool,
 
+    /// Generate unique shapes that don't necessarily grow from center
+    #[arg(long, default_value_t = false)]
+    pub unique_shapes: bool,
+
     /// Enable verbose output
     #[arg(short, long)]
     pub verbose: bool,
+
+    /// Copy to clipboard instead of saving to file
+    #[arg(short, long)]
+    pub copy: bool,
+
+    /// Use classic style generation with fixed triangle layout (2 overlapping shapes)
+    #[arg(long)]
+    pub classic: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum)]
@@ -97,64 +110,109 @@ pub fn run() -> Result<()> {
     };
 
     // Set up the generator
-    let mut generator = Generator::new(cli.grid_size, cli.shapes, cli.opacity, seed);
+    // For classic mode, default to grid size 2 to match original (24 triangles)
+    let grid_size = if cli.classic && cli.grid_size == 4 {
+        2 // Default to 2 for classic mode to match original
+    } else {
+        cli.grid_size
+    };
+
+    let mut generator = Generator::new(grid_size, cli.shapes, cli.opacity, seed);
     generator
         .set_color_scheme(&cli.theme)
-        .set_allow_overlap(cli.overlap);
+        .set_allow_overlap(cli.overlap)
+        .set_unique_shapes(cli.unique_shapes)
+        .set_classic_mode(cli.classic);
 
     // Generate the logo
     generator.generate()?;
 
-    // Make sure the output path has the correct extension
-    let mut output_path = PathBuf::from(&cli.output);
-    if let Some(ext) = output_path.extension().and_then(|e| e.to_str()) {
-        if ext != cli.format.extension() {
-            if cli.verbose {
-                println!(
-                    "Warning: Changing extension from .{} to .{}",
-                    ext,
-                    cli.format.extension()
-                );
+    // Handle clipboard copy or file save
+    if cli.copy {
+        // Copy to clipboard without saving to file
+        match cli.format {
+            Format::Svg => {
+                let svg_data = svg::generate_svg(&generator, cli.width, cli.height)?;
+                clipboard::copy_svg_to_clipboard(&svg_data)?;
+                if cli.verbose {
+                    println!("Logo copied to clipboard as SVG text");
+                }
             }
-            output_path.set_extension(cli.format.extension());
+            Format::Png => {
+                let png_data = png::generate_png(&generator, cli.width, cli.height)?;
+                clipboard::copy_png_to_clipboard(&png_data)?;
+                if cli.verbose {
+                    println!("Logo copied to clipboard as PNG image");
+                }
+            }
         }
     } else {
-        output_path.set_extension(cli.format.extension());
-    }
-
-    // Generate and save the output
-    match cli.format {
-        Format::Svg => {
-            let svg_data = svg::generate_svg(&generator, cli.width, cli.height)?;
-            svg::save_svg(&svg_data, &output_path)?;
+        // Save to file as before
+        // Make sure the output path has the correct extension
+        let mut output_path = PathBuf::from(&cli.output);
+        if let Some(ext) = output_path.extension().and_then(|e| e.to_str()) {
+            if ext != cli.format.extension() {
+                if cli.verbose {
+                    println!(
+                        "Warning: Changing extension from .{ext} to .{}",
+                        cli.format.extension()
+                    );
+                }
+                output_path.set_extension(cli.format.extension());
+            }
+        } else {
+            output_path.set_extension(cli.format.extension());
         }
-        Format::Png => {
-            let png_data = png::generate_png(&generator, cli.width, cli.height)?;
-            png::save_png(&png_data, &output_path)?;
+
+        // Generate and save the output
+        match cli.format {
+            Format::Svg => {
+                let svg_data = svg::generate_svg(&generator, cli.width, cli.height)?;
+                svg::save_svg(&svg_data, &output_path)?;
+            }
+            Format::Png => {
+                let png_data = png::generate_png(&generator, cli.width, cli.height)?;
+                png::save_png(&png_data, &output_path)?;
+            }
         }
-    }
 
-    if cli.verbose {
-        let seed_info = match &cli.uuid {
-            Some(uuid) => format!("UUID: {}", uuid),
-            None => match seed {
-                Some(s) => format!("Seed: {}", s),
-                None => "Random generation (no seed)".to_string(),
-            },
-        };
+        if cli.verbose {
+            let seed_info = match &cli.uuid {
+                Some(uuid) => format!("UUID: {uuid}"),
+                None => match seed {
+                    Some(s) => format!("Seed: {s}"),
+                    None => "Random generation (no seed)".to_string(),
+                },
+            };
 
-        println!("Logo generated successfully:");
-        println!("  Output: {}", output_path.display());
-        println!("  Format: {}", cli.format);
-        println!("  Theme: {}", cli.theme);
-        println!("  Grid size: {}", cli.grid_size);
-        println!("  Shapes: {}", cli.shapes);
-        println!("  Opacity: {}", cli.opacity);
-        println!(
-            "  Overlap: {}",
-            if cli.overlap { "enabled" } else { "disabled" }
-        );
-        println!("  {}", seed_info);
+            println!("Logo generated successfully:");
+            println!("  Output: {}", output_path.display());
+            println!("  Format: {}", cli.format);
+            println!("  Theme: {}", cli.theme);
+            if cli.classic {
+                println!("  Mode: Classic (24 fixed triangles)");
+                println!("  Shapes: 2 overlapping");
+            } else {
+                println!("  Grid size: {grid_size}");
+                println!("  Shapes: {}", cli.shapes);
+            }
+            println!("  Opacity: {}", cli.opacity);
+            println!(
+                "  Overlap: {}",
+                if cli.overlap { "enabled" } else { "disabled" }
+            );
+            if !cli.classic {
+                println!(
+                    "  Unique shapes: {}",
+                    if cli.unique_shapes {
+                        "enabled"
+                    } else {
+                        "disabled"
+                    }
+                );
+            }
+            println!("  {seed_info}");
+        }
     }
 
     Ok(())

@@ -1,4 +1,4 @@
-use hexlogogen::Generator;
+use hexalith::Generator;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a new generator with default settings

@@ -4,17 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Hexalith (HexLogoGen) is a modern geometric logo generator written in Rust. It creates unique hexagonal designs with minimal configuration, inspired by the Mesos Framework Logo Generator style. The tool generates random, geometric logos based on equilateral triangles within a hexagonal grid.
+Hexalith (HexLogoGen) is a modern geometric logo generator written in Rust. It creates unique hexagonal designs with minimal configuration. The tool generates random, geometric logos based on equilateral triangles within a hexagonal grid.
 
 ### Key Features
 
 - **Hexagonal Grid**: Creates a balanced, symmetric foundation for the logo
 - **Equilateral Triangles**: All triangles have equal 60-degree angles for clean designs
 - **Center-Out Growth**: Shapes grow from the center outward for balanced compositions
-- **Multiple Color Themes**: Choose from Mesos, Google, Blues, Greens, Reds, Purples, or Rainbow themes
+- **Multiple Color Themes**: Choose from Classic, Google, Blues, Greens, Reds, Purples, or Rainbow themes
 - **Overlapping Shapes**: By default, shapes overlap with color blending for rich designs
 - **Enhanced Randomization**: Even with the same seed, designs vary slightly between generations
-- **SVG and PNG Output**: Export in vector or raster formats as needed
+- **Classic Mode**: Fixed 24-triangle layout with 2 overlapping shapes for a distinctive geometric style
+- **SVG and PNG Output**: Export in vector or raster formats (PNG is default)
+- **Clipboard Support**: Copy logos directly to clipboard without saving files (CLI and web)
+- **Web Interface**: Built-in web server with PNG and SVG download options
 - **Customizable Parameters**: Control grid density, shape count, opacity, and more
 
 ## Project Structure
@@ -23,10 +26,12 @@ Hexalith (HexLogoGen) is a modern geometric logo generator written in Rust. It c
 hexalith/
 ├── src/
 │   ├── cli/              # Command-line interface handling
+│   ├── clipboard/        # Clipboard functionality for copying logos
 │   ├── generator/        # Core logic for logo generation
 │   │   ├── grid/         # Hexagonal grid geometry
 │   │   ├── shape/        # Shape generation algorithms  
-│   │   └── color/        # Color management
+│   │   ├── color/        # Color management
+│   │   └── classic.rs    # Classic style logo generator with fixed triangles
 │   ├── svg/              # SVG output generation
 │   ├── png/              # PNG conversion from SVG
 │   ├── web/              # Web interface implementation
@@ -55,6 +60,16 @@ The flake uses a rustup-based approach for maximum compatibility across environm
 - Sets up an isolated rustup environment
 - Avoids compatibility issues with Rust compiler flags
 - Preserves all command line options when running via `nix run`
+
+## Recent Features
+
+### Classic Mode (--classic)
+A distinctive generation mode with fixed triangle layout:
+- Uses exactly 2 base shapes (6 triangles each)
+- Shapes overlap with color blending at intersections
+- Creates more distinctive, recognizable patterns
+- Fixed 24-triangle hexagonal layout
+- Generates consistent, balanced geometric designs
 
 ## Project Guidelines
 

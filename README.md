@@ -71,7 +71,7 @@ Run `cargo run -- --help` for the full flag list.
 
 ## Example outputs
 
-Committed sample renders live in `examples/generated/`. To regenerate them:
+Generated sample renders belong in `examples/generated/`. To create them:
 
 ```bash
 ./examples/generate-examples.sh
@@ -107,6 +107,6 @@ The generator is functional, but the current logos still look weak for a few str
 - Color selection is broad, but composition logic does little to create hierarchy, focal points, or balance.
 - SVG output traces raw triangle-region boundaries, which preserves geometry but not elegance.
 - Overlap helps variety, but it also creates muddy intersections and accidental dead space.
-- The deterministic story is weak in practice because color RNG currently mixes in wall-clock time even when a seed is provided.
+- Seeded output is deterministic now, but determinism alone does not improve composition quality.
 
 The next useful improvements are better silhouette constraints, stronger composition scoring, deterministic seeded output, and clearer palette/contrast rules before any UI work returns.

@@ -16,8 +16,7 @@ Hexalith (HexLogoGen) is a modern geometric logo generator written in Rust. It c
 - **Enhanced Randomization**: Even with the same seed, designs vary slightly between generations
 - **Classic Mode**: Fixed 24-triangle layout with 2 overlapping shapes for a distinctive geometric style
 - **SVG and PNG Output**: Export in vector or raster formats (PNG is default)
-- **Clipboard Support**: Copy logos directly to clipboard without saving files (CLI and web)
-- **Web Interface**: Built-in web server with PNG and SVG download options
+- **Clipboard Support**: Copy logos directly to clipboard without saving files
 - **Customizable Parameters**: Control grid density, shape count, opacity, and more
 
 ## Project Structure
@@ -34,13 +33,10 @@ hexalith/
 │   │   └── classic.rs    # Classic style logo generator with fixed triangles
 │   ├── svg/              # SVG output generation
 │   ├── png/              # PNG conversion from SVG
-│   ├── web/              # Web interface implementation
-│   │   ├── routes.rs     # API endpoints
-│   │   └── templates.rs  # HTML templates
 │   ├── utils/            # Helper functions
 │   ├── lib.rs            # Library exports
 │   ├── main.rs           # CLI application entry point
-│   └── web_main.rs       # Web interface entry point
+│   └── ...
 ├── tests/                # Integration tests
 └── examples/             # Example usages
 ```
@@ -53,7 +49,6 @@ The project includes a Nix flake setup that supports:
 
 1. Development environment via `nix develop`
 2. Direct usage via `nix run github:utensils/hexalith` (CLI)
-3. Direct web interface usage via `nix run github:utensils/hexalith#web`
 
 The flake uses a rustup-based approach for maximum compatibility across environments. The implementation:
 - Creates temporary directories for clean builds

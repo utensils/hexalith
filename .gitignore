@@ -37,6 +37,8 @@ result-*
 # Generated outputs
 *.svg
 *.png
+!examples/generated/*.svg
+!examples/generated/*.png
 
 # Project documents
 hexlogogen-prd.md

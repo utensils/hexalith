@@ -1,299 +1,112 @@
 # Hexalith
 
-Modern geometric logo generator in Rust - creates unique hexagonal designs with minimal configuration.
+Hexalith is a CLI-first geometric logo generator written in Rust. It builds abstract marks from connected triangular cells on a hexagonal grid and exports either SVG or PNG.
 
-## Overview
+## Current shape of the project
 
-Hexalith (HexLogoGen) is a command-line tool that generates random, geometric logos based on triangles within a hexagonal grid. The logos are visually distinctive, minimal, and ideal for open-source projects, microservices, or any application that needs a clean, modern identity.
+- `src/generator/` contains the core grid, color, classic-mode, and shape-generation logic.
+- `src/svg/` turns generated shapes into SVG paths or classic triangle polygons.
+- `src/png/` rasterizes the SVG output into PNG with `resvg`.
+- `src/cli/` is the only application interface now.
+
+The web frontend has been removed. The repo is intentionally focused on local CLI iteration while the rendering quality is still being improved.
 
 ## Features
 
-- **Hexagonal Grid Generation**: Creates a hexagonal grid divided into equilateral triangular cells
-- **Shape Creation**: Generates polygon shapes made up of connected triangles that grow from the center outward
-- **Equiangular Triangles**: All triangles have equal 60-degree angles for clean, balanced designs
-- **Connected Edges**: All triangles share edges with adjacent triangles for cohesive patterns
-- **Center-Out Growth**: All shapes grow from the center outward for balanced, harmonious designs
-- **Angular Style**: Default mode creates logos similar to the original hexagonal logo generator
-- **Classic Mode**: Fixed 24-triangle layout with 2 overlapping shapes for a distinctive geometric style
-- **Shape Overlapping**: By default, shapes overlap with color blending at intersections for richer designs
-- **Multiple Color Themes**: Choose from various color themes including Classic (default), Google, Blues, Greens, Reds, Purples, and Rainbow
-- **SVG and PNG Output**: Generates clean, optimized SVG files or PNG images (PNG is default)
-- **Clipboard Support**: Copy logos directly to clipboard without saving files (CLI and web)
-- **Deterministic Mode**: Generate the same logo consistently with the same seed or UUID
-- **Customization Options**: Customize themes, opacity, and grid density
-- **Web Interface**: Includes a built-in web interface with PNG and SVG download options
+- Random or seeded logo generation
+- SVG or PNG output
+- Classic mode with a fixed 24-triangle layout
+- Multiple color themes: `classic`, `google`, `blues`, `greens`, `reds`, `purples`, `rainbow`
+- Clipboard copy support
+- Automatic parent directory creation for output paths
 
-## Installation
+## Local run
 
-### Using Cargo
+### With Nix
+
+The repo flake provides Rust `1.78.0`.
 
 ```bash
-cargo install hexalith
+nix develop -c cargo run -- --format svg output/logo.svg
 ```
 
-### Using Nix Flakes (No Installation Required)
-
-You can run Hexalith directly without installation using Nix:
+You can also use the app entrypoint directly:
 
 ```bash
-# Run the CLI tool to generate a logo
-nix run github:utensils/hexalith
-
-# Run with specific options
-nix run github:utensils/hexalith -- --theme blues --verbose logo.svg
-
-# Run the web interface
-nix run github:utensils/hexalith#web
+nix run . -- --seed 42 --theme classic output/logo.png
 ```
 
-## Usage
-
-### Command Line Interface
-
-```
-Usage: hexalith [OPTIONS] [OUTPUT]
-
-Arguments:
-  [OUTPUT]  Output file path [default: logo.png]
-
-Options:
-  -s, --seed <SEED>            Seed for deterministic generation
-  -u, --uuid <UUID>            UUID for deterministic generation (overrides seed)
-  -t, --theme <THEME>          Color theme [default: classic] [possible values: classic, google, blues, greens, reds, purples, rainbow]
-  -n, --shapes <SHAPES>        Number of shapes to generate [default: 4]
-  -g, --grid-size <GRID_SIZE>  Grid density (2-8) [default: 4]
-  -o, --opacity <OPACITY>      Shape opacity [default: 0.8]
-  --overlap                    Allow shapes to overlap with blended colors [default: true]
-  --unique-shapes              Generate unique shapes that don't necessarily grow from center
-  -w, --width <WIDTH>          Output width in pixels (PNG only) [default: 512]
-  -H, --height <HEIGHT>        Output height in pixels (PNG only) [default: 512]
-  -f, --format <FORMAT>        Output format [default: png] [possible values: svg, png]
-  -c, --copy                   Copy to clipboard instead of saving to file
-  -v, --verbose                Enable verbose output
-      --classic                Use classic style generation with fixed triangle layout
-  -h, --help                   Print help
-  -V, --version                Print version
-```
-
-## Examples
-
-Generate a random logo (PNG by default):
-```bash
-hexalith
-```
-
-Generate a logo in SVG format:
-```bash
-hexalith -f svg my-logo.svg
-```
-
-Generate a deterministic logo using a seed:
-```bash
-hexalith --seed 12345 my-logo.png
-```
-
-Generate a classic style logo:
-```bash
-hexalith --classic logo.png
-```
-
-Generate a PNG with custom dimensions:
-```bash
-hexalith --width 800 --height 800 my-logo.png
-```
-
-Generate a logo with custom parameters:
-```bash
-hexalith --grid-size 8 --shapes 5 --opacity 0.7 --verbose logo.svg
-```
-
-Copy logo to clipboard instead of saving:
-```bash
-hexalith --copy --format svg
-```
-
-Generate a logo with a specific color theme:
-```bash
-hexalith --theme blues --seed 42 logo.svg
-```
-
-Generate a logo without overlapping shapes:
-```bash
-hexalith --no-overlap --seed 42 logo.svg
-```
-
-Generate a classic style logo:
-```bash
-hexalith --classic --seed 42 logo.svg
-```
-
-Generate a classic logo with different theme:
-```bash
-hexalith --classic --theme google classic-logo.svg
-```
-
-Try different color themes:
-```bash
-hexalith --theme google logo_google.svg
-hexalith --theme rainbow logo_rainbow.svg
-hexalith --theme greens logo_green.svg
-hexalith --theme purples logo_purple.svg
-```
-
-Use a UUID for deterministic generation:
-```bash
-hexalith --uuid f47ac10b-58cc-4372-a567-0e02b2c3d479 logo.svg
-```
-
-Copy logo directly to clipboard (no file created):
-```bash
-# Copy as PNG (default)
-hexalith --copy
-
-# Copy as SVG
-hexalith --copy --format svg
-
-# Copy with specific parameters
-hexalith --copy --theme rainbow --shapes 6
-```
-
-Generate classic style logo with fixed triangle layout:
-```bash
-# Classic mode uses exactly 2 shapes with 6-10 triangles each
-hexalith --classic --seed 42 logo.svg
-
-# Classic mode works well with smaller grid sizes
-hexalith --classic --grid-size 2 --theme google classic_logo.png
-```
-
-### Web Interface
-
-Hexalith also includes a web interface for rapid logo design and experimentation. The web interface provides a visual way to adjust parameters and immediately see the results.
-
-To run the web interface:
+### With a local Rust toolchain
 
 ```bash
-# Using cargo
-cargo run --bin hexweb
-
-# Using nix develop
-nix develop -c web-run
-
-# Without installing (using nix run)
-nix run github:utensils/hexalith#web
+cargo run -- --format svg output/logo.svg
 ```
 
-This will start a web server at http://localhost:3000 where you can:
+## CLI usage
 
-- Adjust all logo parameters in real-time
-- See immediate previews of your changes
-- Generate random logos with different seeds
-- Download SVG files of your designs
-- Copy logos directly to clipboard
-- Save your favorite designs for reference
+```text
+hexalith [OPTIONS] [OUTPUT]
+```
 
-The web interface is particularly useful for:
-- Quickly experimenting with different parameters
-- Finding the perfect color theme for your project
-- Testing how grid density affects design complexity
-- Comparing multiple logo variations side by side
+Examples:
+
+```bash
+# Default PNG output
+cargo run -- output/logo.png
+
+# SVG with deterministic seed
+cargo run -- --format svg --seed 42 output/logo.svg
+
+# Classic mode
+cargo run -- --classic --theme google output/classic-google.png
+
+# Denser grid and more shapes
+cargo run -- --grid-size 6 --shapes 5 --opacity 0.7 output/variant.png
+
+# Copy SVG to clipboard instead of writing a file
+cargo run -- --copy --format svg
+```
+
+Run `cargo run -- --help` for the full flag list.
+
+## Example outputs
+
+Committed sample renders live in `examples/generated/`. To regenerate them:
+
+```bash
+./examples/generate-examples.sh
+```
+
+The script uses `nix develop` when available and falls back to plain `cargo`.
 
 ## Development
 
-### Prerequisites
-
-- Rust 1.60 or later
-- Nix with flakes enabled (optional)
-
-### Setup with Nix
-
-If you have Nix with flakes enabled and direnv installed:
+Build:
 
 ```bash
-# Clone the repository
-git clone https://github.com/utensils/hexalith.git
-cd hexalith
-
-# Allow direnv
-direnv allow
-
-# Build the project
-cargo build
+nix develop -c cargo build
 ```
 
-### Setup without Nix
+Test:
 
 ```bash
-# Clone the repository
-git clone https://github.com/utensils/hexalith.git
-cd hexalith
-
-# Build the project
-cargo build
+nix develop -c cargo test
 ```
 
-### Running Tests
+Format:
 
 ```bash
-# Run all tests
-cargo test
-
-# Run specific tests
-cargo test grid  # Run grid-related tests
-cargo test svg   # Run SVG output tests
+nix develop -c cargo fmt
 ```
 
-### Code Coverage
+## Rendering quality notes
 
-If you have Nix with flakes enabled:
+The generator is functional, but the current logos still look weak for a few structural reasons:
 
-```bash
-# Generate code coverage report
-nix develop -c rs-coverage
+- Shape growth is mostly cell-based randomness, so silhouettes often feel blob-like instead of intentional.
+- Color selection is broad, but composition logic does little to create hierarchy, focal points, or balance.
+- SVG output traces raw triangle-region boundaries, which preserves geometry but not elegance.
+- Overlap helps variety, but it also creates muddy intersections and accidental dead space.
+- The deterministic story is weak in practice because color RNG currently mixes in wall-clock time even when a seed is provided.
 
-# The HTML report will open in your browser
-# Or you can find it at ./target/coverage/html/index.html
-```
-
-For non-Nix users, you can generate coverage using grcov directly:
-
-```bash
-# Install necessary tools
-rustup component add llvm-tools-preview
-cargo install grcov
-
-# Set up environment variables
-export CARGO_INCREMENTAL=0
-export RUSTFLAGS="-Cinstrument-coverage -Ccodegen-units=1 -Copt-level=0"
-export LLVM_PROFILE_FILE="hexalith-%p-%m.profraw"
-
-# Run tests
-cargo test
-
-# Generate coverage report
-grcov . --binary-path ./target/debug/deps/ \
-  --source-dir . \
-  --output-path ./target/coverage/ \
-  --output-type html \
-  --branch \
-  --ignore "target/*" \
-  --ignore "tests/*" \
-  --ignore-not-existing \
-  --llvm
-```
-
-> **Note**: The current coverage report provides reliable metrics for line coverage but has limitations with branch coverage measurement. This is a known issue with LLVM instrumentation in stable Rust. For more accurate branch coverage, a specialized setup with nightly Rust and additional tools may be required in the future.
-
-## Project Structure
-
-- `src/generator/grid/`: Hexagonal grid geometry and triangular subdivision
-- `src/generator/shape/`: Shape generation algorithms
-- `src/generator/color/`: Color management and blending
-- `src/svg/`: SVG output generation
-- `src/png/`: PNG conversion from SVG
-- `src/cli/`: Command line interface handling
-- `src/web/`: Web interface implementation
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+The next useful improvements are better silhouette constraints, stronger composition scoring, deterministic seeded output, and clearer palette/contrast rules before any UI work returns.

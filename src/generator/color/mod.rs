@@ -52,20 +52,8 @@ impl From<&str> for Theme {
 
 impl ColorManager {
     pub fn new(palette: Vec<String>, seed: Option<u64>) -> Self {
-        // Add extra randomness by combining seed with timestamp nanoseconds
         let rng = match seed {
-            Some(seed) => {
-                // Get the current timestamp's nanoseconds
-                let now = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .subsec_nanos();
-
-                // Combine seed and timestamp for additional randomness
-                // But only use a portion of the nanoseconds to preserve some determinism
-                let combined_seed = seed.wrapping_add((now % 10000) as u64);
-                ChaCha8Rng::seed_from_u64(combined_seed)
-            }
+            Some(seed) => ChaCha8Rng::seed_from_u64(seed),
             None => ChaCha8Rng::from_entropy(),
         };
 
@@ -75,13 +63,14 @@ impl ColorManager {
     /// Get a list of available theme names
     pub fn available_themes() -> Vec<String> {
         vec![
-            "mesos".to_string(),
+            "classic".to_string(),
             "google".to_string(),
             "blues".to_string(),
             "greens".to_string(),
             "reds".to_string(),
             "purples".to_string(),
             "rainbow".to_string(),
+            "mesos".to_string(),
         ]
     }
 

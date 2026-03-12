@@ -5,6 +5,7 @@ use crate::svg;
 use crate::utils;
 use crate::Result;
 use clap::{Parser, ValueEnum};
+use std::fs;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -165,6 +166,12 @@ pub fn run() -> Result<()> {
         }
 
         // Generate and save the output
+        if let Some(parent) = output_path.parent() {
+            if !parent.as_os_str().is_empty() {
+                fs::create_dir_all(parent)?;
+            }
+        }
+
         match cli.format {
             Format::Svg => {
                 let svg_data = svg::generate_svg(&generator, cli.width, cli.height)?;

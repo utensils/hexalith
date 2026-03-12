@@ -88,12 +88,6 @@
               command = "${rustToolchain}/bin/cargo build";
             }
             {
-              name = "web-run";
-              category = "web";
-              help = "Run the web interface";
-              command = "${rustToolchain}/bin/cargo run --bin hexweb";
-            }
-            {
               name = "rs-run";
               category = "development";
               help = "Run the project";
@@ -322,9 +316,9 @@
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal -c rustfmt,clippy >/dev/null 2>&1
             source "$CARGO_HOME/env"
             
-            echo "Starting web interface..."
+            echo "Generating logo..."
             # Run cargo directly from our clean environment
-            cargo run --bin hexweb
+            cargo run --bin hexalith -- --verbose "$@"
           '');
         };
       }

@@ -3045,7 +3045,7 @@ mod tests {
 
         // Total score should be in valid range
         let total = metrics.total_score();
-        assert!(total >= 0.0 && total <= 1.0);
+        assert!((0.0..=1.0).contains(&total));
     }
 
     #[test]

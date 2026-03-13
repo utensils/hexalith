@@ -470,6 +470,7 @@ impl ColorManager {
     }
 
     /// Assign optimal colors to a set of shapes to ensure visual harmony
+    #[allow(dead_code)]
     pub fn assign_harmonious_colors(
         &mut self,
         grid: &crate::generator::grid::TriangularGrid,

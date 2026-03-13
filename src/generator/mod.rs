@@ -182,6 +182,8 @@ impl Generator {
             ));
         }
 
+        self.inflate_shape_count(&mut color_manager);
+
         Ok(())
     }
 
@@ -192,7 +194,8 @@ impl Generator {
         color_manager: &mut ColorManager,
         blueprint: &EmblemBlueprint,
     ) {
-        let colors = color_manager.get_random_colors(self.shapes_count.max(2) as usize + 2);
+        let target_shapes = self.shapes_count.max(2) as usize;
+        let colors = color_manager.get_random_colors(target_shapes + 2);
         let primary = colors[0].clone();
         let secondary = pick_contrasting_color(&primary, &colors);
 
@@ -200,30 +203,47 @@ impl Generator {
         let shape_b_cells = union_cells(core_cells, &layer_cells[1]);
         let overlap_cells = intersection_cells(&shape_a_cells, &shape_b_cells);
 
-        let shape_a_only = subtract_cells(&shape_a_cells, &overlap_cells);
-        if !shape_a_only.is_empty() {
-            self.shapes.push(build_shape(
-                primary.clone(),
-                self.opacity,
-                shape_a_only.clone(),
-            ));
-        }
+        if target_shapes <= 2 {
+            if !shape_a_cells.is_empty() {
+                self.shapes.push(build_shape(
+                    primary.clone(),
+                    self.opacity,
+                    shape_a_cells.clone(),
+                ));
+            }
+            if !shape_b_cells.is_empty() {
+                self.shapes.push(build_shape(
+                    secondary.clone(),
+                    self.opacity,
+                    shape_b_cells.clone(),
+                ));
+            }
+        } else {
+            let shape_a_only = subtract_cells(&shape_a_cells, &overlap_cells);
+            if !shape_a_only.is_empty() {
+                self.shapes.push(build_shape(
+                    primary.clone(),
+                    self.opacity,
+                    shape_a_only.clone(),
+                ));
+            }
 
-        let shape_b_only = subtract_cells(&shape_b_cells, &overlap_cells);
-        if !shape_b_only.is_empty() {
-            self.shapes.push(build_shape(
-                secondary.clone(),
-                self.opacity,
-                shape_b_only.clone(),
-            ));
-        }
+            let shape_b_only = subtract_cells(&shape_b_cells, &overlap_cells);
+            if !shape_b_only.is_empty() {
+                self.shapes.push(build_shape(
+                    secondary.clone(),
+                    self.opacity,
+                    shape_b_only.clone(),
+                ));
+            }
 
-        if !overlap_cells.is_empty() {
-            self.shapes.push(build_shape(
-                blend_colors(&primary, &secondary),
-                self.opacity,
-                overlap_cells.clone(),
-            ));
+            if !overlap_cells.is_empty() {
+                self.shapes.push(build_shape(
+                    blend_colors(&primary, &secondary),
+                    self.opacity,
+                    overlap_cells.clone(),
+                ));
+            }
         }
 
         let mut used_cells = union_cells(&shape_a_cells, &shape_b_cells)
@@ -294,6 +314,63 @@ impl Generator {
             existing_colors.push(color.clone());
             used_cells.extend(trimmed.iter().copied());
             self.shapes.push(build_shape(color, self.opacity, trimmed));
+        }
+    }
+
+    fn inflate_shape_count(&mut self, color_manager: &mut ColorManager) {
+        let target = self.shapes_count as usize;
+        if self.shapes.len() >= target || self.shapes.is_empty() {
+            return;
+        }
+
+        let Some((base_index, base_shape)) = self
+            .shapes
+            .iter()
+            .enumerate()
+            .max_by_key(|(_, shape)| shape.cells.len())
+            .map(|(idx, shape)| (idx, shape.clone()))
+        else {
+            return;
+        };
+
+        if base_shape.cells.len() < 2 {
+            return;
+        }
+
+        let mut base_cells = base_shape.cells.clone();
+        base_cells.sort_unstable();
+        let mut existing_colors: Vec<String> = self
+            .shapes
+            .iter()
+            .map(|shape| shape.color.clone())
+            .collect();
+
+        for extra_idx in self.shapes.len()..target {
+            let desired_cells: Vec<usize> = base_cells
+                .iter()
+                .enumerate()
+                .filter_map(|(cell_idx, cell)| {
+                    if cell_idx % target == extra_idx % target {
+                        Some(*cell)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            if desired_cells.is_empty() {
+                continue;
+            }
+
+            let color = color_manager.get_different_color(&existing_colors);
+            existing_colors.push(color.clone());
+            self.shapes
+                .push(build_shape(color, self.opacity, desired_cells));
+        }
+
+        // Keep the largest foundational mark first for rendering stability.
+        if base_index != 0 && base_index < self.shapes.len() {
+            self.shapes.swap(0, base_index);
         }
     }
 

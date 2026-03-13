@@ -2,6 +2,10 @@ use assert_cmd::Command;
 use predicates::prelude::*;
 use tempfile::tempdir;
 
+fn clipboard_available() -> bool {
+    std::env::var_os("DISPLAY").is_some() || std::env::var_os("WAYLAND_DISPLAY").is_some()
+}
+
 #[test]
 fn test_copy_flag_prevents_file_creation() {
     // Test that --copy flag prevents file creation
@@ -11,8 +15,15 @@ fn test_copy_flag_prevents_file_creation() {
     let mut cmd = Command::cargo_bin("hexalith").unwrap();
     cmd.arg("--copy").arg(output_path.to_str().unwrap());
 
-    // The command should succeed
-    cmd.assert().success();
+    let output = cmd.output().unwrap();
+    if clipboard_available() {
+        assert!(output.status.success());
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("clipboard") || stderr.contains("X11") || stderr.contains("Wayland")
+        );
+    }
 
     // But no file should be created
     assert!(
@@ -52,9 +63,17 @@ fn test_copy_svg_to_clipboard() {
         .arg("svg")
         .arg("--verbose");
 
-    cmd.assert().success().stdout(predicate::str::contains(
-        "Logo copied to clipboard as SVG text",
-    ));
+    let output = cmd.output().unwrap();
+    if clipboard_available() {
+        assert!(output.status.success());
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("Logo copied to clipboard as SVG text"));
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("clipboard") || stderr.contains("X11") || stderr.contains("Wayland")
+        );
+    }
 }
 
 #[test]
@@ -150,7 +169,15 @@ fn test_copy_with_all_options() {
         .arg("--unique-shapes")
         .arg("--verbose");
 
-    cmd.assert().success().stdout(predicate::str::contains(
-        "Logo copied to clipboard as SVG text",
-    ));
+    let output = cmd.output().unwrap();
+    if clipboard_available() {
+        assert!(output.status.success());
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("Logo copied to clipboard as SVG text"));
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("clipboard") || stderr.contains("X11") || stderr.contains("Wayland")
+        );
+    }
 }

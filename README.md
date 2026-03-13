@@ -15,7 +15,7 @@ The web frontend has been removed. The repo is intentionally focused on local CL
 
 - Random or seeded logo generation
 - SVG or PNG output
-- Symmetry-first modern mode with six-way rotational composition by default
+- Emblem-first modern mode with bilateral, triadic, and restrained hex composition by default
 - Classic mode with a fixed 24-triangle layout
 - Multiple color themes: `classic`, `google`, `blues`, `greens`, `reds`, `purples`, `rainbow`
 - Clipboard copy support
@@ -66,8 +66,8 @@ cargo run -- --classic --theme google output/classic-google.png
 # Denser grid and more shapes
 cargo run -- --grid-size 6 --shapes 5 --opacity 0.7 output/variant.png
 
-# Symmetry-first modern default
-cargo run -- --seed 4242 --theme blues output/symmetric-mark.png
+# Emblem-first modern default
+cargo run -- --seed 4242 --theme blues output/emblem-mark.png
 
 # Copy SVG to clipboard instead of writing a file
 cargo run -- --copy --format svg
@@ -113,4 +113,4 @@ nix develop -c cargo clippy --all-targets --all-features
 
 ## Rendering notes
 
-Modern mode now builds logos from full rotational orbits of triangular cells. That gives the default output strong six-way symmetry, cleaner radial balance, and deterministic seeded layouts without introducing a large flag surface.
+Modern mode now builds logos from seeded emblem blueprints instead of full six-way rotational orbits. The defaults bias toward a bold center, fewer outer repetitions, cleaner negative space, and a stronger silhouette while staying deterministic from the CLI.

@@ -206,7 +206,7 @@ pub fn run() -> Result<()> {
                     "  Symmetry: {}",
                     match generator.symmetry_mode() {
                         SymmetryMode::None => "none",
-                        SymmetryMode::Rotational6 => "radial rotational (6-way)",
+                        SymmetryMode::Emblem => "emblem (bilateral / triadic / restrained hex)",
                     }
                 );
             }

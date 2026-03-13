@@ -11,14 +11,14 @@ use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
 use shape::Shape;
 use std::cmp::Ordering;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 pub use color::Theme;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SymmetryMode {
     None,
-    Rotational6,
+    Emblem,
 }
 
 pub struct Generator {
@@ -36,30 +36,34 @@ pub struct Generator {
     symmetry_mode: SymmetryMode,
 }
 
-#[derive(Debug, Clone)]
-struct SymmetryOrbit {
-    cells: Vec<usize>,
+#[derive(Debug, Clone, Copy)]
+struct CellProfile {
+    cell_id: usize,
     radius: f64,
-    sector_angle: f64,
+    angle: f64,
 }
 
 #[derive(Debug, Clone, Copy)]
-enum MotifKind {
-    Core,
-    Petals,
-    Halo,
-    Ring,
-    Crown,
-    Spokes,
+enum EmblemFamily {
+    Bilateral,
+    Triadic,
+    Hex,
 }
 
-#[derive(Debug, Clone, Copy)]
-struct Motif {
-    kind: MotifKind,
+#[derive(Debug, Clone)]
+struct EmblemBlueprint {
+    family: EmblemFamily,
+    shared_core: LayerSpec,
+    layers: Vec<LayerSpec>,
+}
+
+#[derive(Debug, Clone)]
+struct LayerSpec {
     min_radius: f64,
     max_radius: f64,
-    anchor: f64,
+    targets: Vec<f64>,
     width: f64,
+    fill_band: bool,
 }
 
 impl Generator {
@@ -76,7 +80,7 @@ impl Generator {
             unique_shapes: false,
             classic_mode: false,
             classic_generator: None,
-            symmetry_mode: SymmetryMode::Rotational6,
+            symmetry_mode: SymmetryMode::Emblem,
         }
     }
 
@@ -111,7 +115,7 @@ impl Generator {
             self.allow_overlap = true;
             self.shapes_count = 2;
         } else {
-            self.symmetry_mode = SymmetryMode::Rotational6;
+            self.symmetry_mode = SymmetryMode::Emblem;
         }
         self
     }
@@ -129,82 +133,72 @@ impl Generator {
 
         let grid = TriangularGrid::new(100.0, self.grid_size);
         self.grid = Some(grid);
-        self.generate_symmetric_modern()
+        self.generate_emblem_modern()
     }
 
-    fn generate_symmetric_modern(&mut self) -> Result<()> {
+    fn generate_emblem_modern(&mut self) -> Result<()> {
         let grid = self.grid.as_ref().ok_or("Grid not initialized")?;
-        let orbits = build_rotational_orbits(grid);
-
-        if orbits.is_empty() {
+        let profiles = build_cell_profiles(grid);
+        if profiles.is_empty() {
             return Ok(());
         }
-
-        let max_radius = orbits
-            .iter()
-            .map(|orbit| orbit.radius)
-            .fold(0.0_f64, f64::max)
-            .max(1.0);
 
         let mut rng = match self.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed ^ 0xA5A5_A5A5_A5A5_A5A5),
             None => ChaCha8Rng::from_entropy(),
         };
         let mut color_manager = ColorManager::with_theme(self.theme, self.seed);
+        let blueprint = build_blueprint(&mut rng, self.unique_shapes);
 
-        if self.allow_overlap && self.shapes_count >= 2 {
-            self.generate_overlap_shapes(&orbits, max_radius, &mut color_manager, &mut rng);
+        let core_cells = select_layer_cells(&profiles, &blueprint.shared_core);
+        let layer_cells: Vec<Vec<usize>> = blueprint
+            .layers
+            .iter()
+            .map(|layer| select_layer_cells(&profiles, layer))
+            .filter(|cells| !cells.is_empty())
+            .collect();
+
+        if self.allow_overlap && layer_cells.len() >= 2 && self.shapes_count >= 2 {
+            self.generate_overlapping_emblem(
+                &core_cells,
+                &layer_cells,
+                &mut color_manager,
+                &blueprint,
+            );
         } else {
-            self.generate_non_overlapping_shapes(&orbits, max_radius, &mut color_manager, &mut rng);
+            self.generate_non_overlapping_emblem(&core_cells, &layer_cells, &mut color_manager);
+        }
+
+        if self.shapes.is_empty() {
+            let fallback_cells = if !core_cells.is_empty() {
+                core_cells
+            } else {
+                vec![profiles[0].cell_id]
+            };
+            self.shapes.push(build_shape(
+                color_manager.get_random_color(),
+                self.opacity,
+                fallback_cells,
+            ));
         }
 
         Ok(())
     }
 
-    fn generate_overlap_shapes(
+    fn generate_overlapping_emblem(
         &mut self,
-        orbits: &[SymmetryOrbit],
-        max_radius: f64,
+        core_cells: &[usize],
+        layer_cells: &[Vec<usize>],
         color_manager: &mut ColorManager,
-        rng: &mut ChaCha8Rng,
+        blueprint: &EmblemBlueprint,
     ) {
-        let shared_cutoff = if self.grid_size <= 3 { 0.16 } else { 0.20 };
-        let shared_core = select_matching_orbits(
-            orbits,
-            max_radius,
-            &Motif {
-                kind: MotifKind::Core,
-                min_radius: 0.0,
-                max_radius: shared_cutoff,
-                anchor: 30.0,
-                width: 30.0,
-            },
-            &HashSet::new(),
-        );
-
-        let left_anchor = 12.0 + rng.gen_range(0.0..10.0);
-        let right_anchor = 60.0 - left_anchor;
         let colors = color_manager.get_random_colors(self.shapes_count.max(2) as usize + 2);
         let primary = colors[0].clone();
         let secondary = pick_contrasting_color(&primary, &colors);
 
-        let motif_a = build_motif(1, left_anchor, self.unique_shapes);
-        let motif_b = build_motif(2, right_anchor, self.unique_shapes);
-
-        let shape_a_orbits = union_orbits(
-            &shared_core,
-            &select_matching_orbits(orbits, max_radius, &motif_a, &HashSet::new()),
-        );
-        let shape_b_orbits = union_orbits(
-            &shared_core,
-            &select_matching_orbits(orbits, max_radius, &motif_b, &HashSet::new()),
-        );
-
-        let shape_a_cells = collect_cells(orbits, &shape_a_orbits);
-        let shape_b_cells = collect_cells(orbits, &shape_b_orbits);
+        let shape_a_cells = union_cells(core_cells, &layer_cells[0]);
+        let shape_b_cells = union_cells(core_cells, &layer_cells[1]);
         let overlap_cells = intersection_cells(&shape_a_cells, &shape_b_cells);
-
-        let mut used_cells = HashSet::new();
 
         let shape_a_only = subtract_cells(&shape_a_cells, &overlap_cells);
         if !shape_a_only.is_empty() {
@@ -213,7 +207,6 @@ impl Generator {
                 self.opacity,
                 shape_a_only.clone(),
             ));
-            used_cells.extend(shape_a_only);
         }
 
         let shape_b_only = subtract_cells(&shape_b_cells, &overlap_cells);
@@ -223,7 +216,6 @@ impl Generator {
                 self.opacity,
                 shape_b_only.clone(),
             ));
-            used_cells.extend(shape_b_only);
         }
 
         if !overlap_cells.is_empty() {
@@ -232,72 +224,76 @@ impl Generator {
                 self.opacity,
                 overlap_cells.clone(),
             ));
-            used_cells.extend(overlap_cells);
         }
 
+        let mut used_cells = union_cells(&shape_a_cells, &shape_b_cells)
+            .into_iter()
+            .collect::<HashSet<_>>();
         let mut existing_colors = vec![primary, secondary];
-        while self.shapes.len() < self.shapes_count as usize {
-            let shape_index = self.shapes.len() + 1;
-            let motif = build_motif(
-                shape_index,
-                20.0 + rng.gen_range(0.0..20.0),
-                self.unique_shapes,
-            );
-            let orbit_ids =
-                select_matching_orbits_from_cells(orbits, max_radius, &motif, &used_cells);
-            if orbit_ids.is_empty() {
+
+        for cells in layer_cells.iter().skip(2) {
+            if self.shapes.len() >= self.shapes_count as usize {
                 break;
             }
 
-            let cells = collect_cells(orbits, &orbit_ids);
+            let trimmed = subtract_used(cells, &used_cells);
+            if trimmed.is_empty() {
+                continue;
+            }
+
+            let accent_cells = if matches!(blueprint.family, EmblemFamily::Hex) {
+                let limit = trimmed.len().min(18);
+                trimmed.into_iter().take(limit).collect()
+            } else {
+                trimmed
+            };
+
+            if accent_cells.is_empty() {
+                continue;
+            }
+
             let color = color_manager.get_different_color(&existing_colors);
             existing_colors.push(color.clone());
-            used_cells.extend(cells.iter().copied());
-            self.shapes.push(build_shape(color, self.opacity, cells));
-        }
-
-        if self.shapes.is_empty() {
-            self.generate_non_overlapping_shapes(orbits, max_radius, color_manager, rng);
+            used_cells.extend(accent_cells.iter().copied());
+            self.shapes
+                .push(build_shape(color, self.opacity, accent_cells));
         }
     }
 
-    fn generate_non_overlapping_shapes(
+    fn generate_non_overlapping_emblem(
         &mut self,
-        orbits: &[SymmetryOrbit],
-        max_radius: f64,
+        core_cells: &[usize],
+        layer_cells: &[Vec<usize>],
         color_manager: &mut ColorManager,
-        rng: &mut ChaCha8Rng,
     ) {
         let mut used_cells = HashSet::new();
         let mut existing_colors = Vec::new();
 
-        for shape_index in 0..self.shapes_count as usize {
-            let anchor = if shape_index % 2 == 0 {
-                14.0 + rng.gen_range(0.0..14.0)
-            } else {
-                38.0 + rng.gen_range(0.0..10.0)
-            };
-            let motif = build_motif(shape_index, anchor, self.unique_shapes);
-            let orbit_ids =
-                select_matching_orbits_from_cells(orbits, max_radius, &motif, &used_cells);
-            if orbit_ids.is_empty() {
+        let mut ordered_layers = Vec::new();
+        if let Some(first_layer) = layer_cells.first() {
+            ordered_layers.push(union_cells(core_cells, first_layer));
+        } else if !core_cells.is_empty() {
+            ordered_layers.push(core_cells.to_vec());
+        }
+
+        for cells in layer_cells.iter().skip(1) {
+            ordered_layers.push(cells.clone());
+        }
+
+        for cells in ordered_layers {
+            if self.shapes.len() >= self.shapes_count as usize {
+                break;
+            }
+
+            let trimmed = subtract_used(&cells, &used_cells);
+            if trimmed.is_empty() {
                 continue;
             }
 
-            let cells = collect_cells(orbits, &orbit_ids);
             let color = color_manager.get_different_color(&existing_colors);
             existing_colors.push(color.clone());
-            used_cells.extend(cells.iter().copied());
-            self.shapes.push(build_shape(color, self.opacity, cells));
-        }
-
-        if self.shapes.is_empty() {
-            let fallback_cells = collect_cells(orbits, &[0]);
-            self.shapes.push(build_shape(
-                color_manager.get_random_color(),
-                self.opacity,
-                fallback_cells,
-            ));
+            used_cells.extend(trimmed.iter().copied());
+            self.shapes.push(build_shape(color, self.opacity, trimmed));
         }
     }
 
@@ -318,283 +314,229 @@ impl Generator {
     }
 }
 
-fn build_motif(index: usize, anchor: f64, unique_shapes: bool) -> Motif {
-    let cycle = index % 6;
-    let width_adjustment = if unique_shapes { 2.0 } else { 0.0 };
-
-    match cycle {
-        0 => Motif {
-            kind: MotifKind::Core,
-            min_radius: 0.0,
-            max_radius: 0.22,
-            anchor: 30.0,
-            width: 30.0,
-        },
-        1 => Motif {
-            kind: MotifKind::Petals,
-            min_radius: 0.16,
-            max_radius: 0.55,
-            anchor,
-            width: 8.0 + width_adjustment,
-        },
-        2 => Motif {
-            kind: MotifKind::Halo,
-            min_radius: 0.38,
-            max_radius: 0.80,
-            anchor: 30.0,
-            width: 18.0 + width_adjustment,
-        },
-        3 => Motif {
-            kind: MotifKind::Ring,
-            min_radius: 0.48,
-            max_radius: 0.68,
-            anchor: 30.0,
-            width: 30.0,
-        },
-        4 => Motif {
-            kind: MotifKind::Crown,
-            min_radius: 0.68,
-            max_radius: 1.0,
-            anchor,
-            width: 12.0 + width_adjustment,
-        },
-        _ => Motif {
-            kind: MotifKind::Spokes,
-            min_radius: 0.24,
-            max_radius: 0.92,
-            anchor: 0.0,
-            width: 9.0 + width_adjustment,
-        },
-    }
-}
-
-fn build_rotational_orbits(grid: &TriangularGrid) -> Vec<SymmetryOrbit> {
+fn build_cell_profiles(grid: &TriangularGrid) -> Vec<CellProfile> {
     let center = grid.hex_grid().center;
-    let lookup: HashMap<(i64, i64), usize> = grid
+    let max_radius = grid
         .cells()
         .iter()
-        .map(|cell| (point_key(cell.centroid), cell.id))
-        .collect();
+        .map(|cell| cell.centroid.distance(&center))
+        .fold(0.0_f64, f64::max)
+        .max(1.0);
 
-    let mut visited = HashSet::new();
-    let mut orbits = Vec::new();
+    let mut profiles = grid
+        .cells()
+        .iter()
+        .map(|cell| CellProfile {
+            cell_id: cell.id,
+            radius: cell.centroid.distance(&center) / max_radius,
+            angle: normalize_angle(cell.centroid, center),
+        })
+        .collect::<Vec<_>>();
 
-    for cell in grid.cells() {
-        if visited.contains(&cell.id) {
-            continue;
-        }
-
-        let mut cells = HashSet::new();
-        for turns in 0..6 {
-            let rotated = rotate_point(cell.centroid, turns, center);
-            if let Some(cell_id) = lookup_cell_id(grid, &lookup, rotated) {
-                cells.insert(cell_id);
-            }
-        }
-
-        let mut cells: Vec<usize> = cells.into_iter().collect();
-        cells.sort_unstable();
-        visited.extend(cells.iter().copied());
-
-        let angle = normalize_sector_angle(cell.centroid, center);
-        orbits.push(SymmetryOrbit {
-            radius: cell.centroid.distance(&center),
-            sector_angle: angle,
-            cells,
-        });
-    }
-
-    orbits.sort_by(|a, b| {
-        a.radius
-            .partial_cmp(&b.radius)
+    profiles.sort_by(|left, right| {
+        left.radius
+            .partial_cmp(&right.radius)
             .unwrap_or(Ordering::Equal)
             .then_with(|| {
-                a.sector_angle
-                    .partial_cmp(&b.sector_angle)
+                left.angle
+                    .partial_cmp(&right.angle)
                     .unwrap_or(Ordering::Equal)
             })
     });
 
-    orbits
+    profiles
 }
 
-fn lookup_cell_id(
-    grid: &TriangularGrid,
-    lookup: &HashMap<(i64, i64), usize>,
-    point: Point,
-) -> Option<usize> {
-    if let Some(cell_id) = lookup.get(&point_key(point)) {
-        return Some(*cell_id);
+fn build_blueprint(rng: &mut ChaCha8Rng, unique_shapes: bool) -> EmblemBlueprint {
+    match rng.gen_range(0..3) {
+        0 => bilateral_blueprint(rng, unique_shapes),
+        1 => triadic_blueprint(rng, unique_shapes),
+        _ => hex_blueprint(rng, unique_shapes),
     }
+}
 
-    grid.cells()
+fn bilateral_blueprint(rng: &mut ChaCha8Rng, unique_shapes: bool) -> EmblemBlueprint {
+    let axis = pick_axis(rng);
+    let loosen = if unique_shapes { 3.0 } else { 0.0 };
+
+    EmblemBlueprint {
+        family: EmblemFamily::Bilateral,
+        shared_core: LayerSpec {
+            min_radius: 0.0,
+            max_radius: 0.18,
+            targets: Vec::new(),
+            width: 0.0,
+            fill_band: true,
+        },
+        layers: vec![
+            LayerSpec {
+                min_radius: 0.12,
+                max_radius: 0.46,
+                targets: vec![axis - 26.0, axis + 26.0],
+                width: 17.0 + loosen,
+                fill_band: false,
+            },
+            LayerSpec {
+                min_radius: 0.18,
+                max_radius: 0.62,
+                targets: vec![axis + 180.0],
+                width: 16.0,
+                fill_band: false,
+            },
+            LayerSpec {
+                min_radius: 0.48,
+                max_radius: 0.80,
+                targets: vec![axis - 9.0, axis + 9.0],
+                width: 9.0 + loosen * 0.5,
+                fill_band: false,
+            },
+            LayerSpec {
+                min_radius: 0.30,
+                max_radius: 0.56,
+                targets: vec![axis - 54.0, axis + 54.0],
+                width: 10.0 + loosen,
+                fill_band: false,
+            },
+        ],
+    }
+}
+
+fn triadic_blueprint(rng: &mut ChaCha8Rng, unique_shapes: bool) -> EmblemBlueprint {
+    let axis = pick_axis(rng);
+    let loosen = if unique_shapes { 2.5 } else { 0.0 };
+
+    EmblemBlueprint {
+        family: EmblemFamily::Triadic,
+        shared_core: LayerSpec {
+            min_radius: 0.0,
+            max_radius: 0.20,
+            targets: Vec::new(),
+            width: 0.0,
+            fill_band: true,
+        },
+        layers: vec![
+            LayerSpec {
+                min_radius: 0.14,
+                max_radius: 0.50,
+                targets: rotated_targets(axis + 12.0, 3, 120.0),
+                width: 15.0 + loosen,
+                fill_band: false,
+            },
+            LayerSpec {
+                min_radius: 0.22,
+                max_radius: 0.58,
+                targets: rotated_targets(axis + 72.0, 3, 120.0),
+                width: 12.0 + loosen,
+                fill_band: false,
+            },
+            LayerSpec {
+                min_radius: 0.50,
+                max_radius: 0.82,
+                targets: rotated_targets(axis + 12.0, 3, 120.0),
+                width: 7.0 + loosen * 0.5,
+                fill_band: false,
+            },
+        ],
+    }
+}
+
+fn hex_blueprint(rng: &mut ChaCha8Rng, unique_shapes: bool) -> EmblemBlueprint {
+    let axis = pick_axis(rng);
+    let loosen = if unique_shapes { 2.0 } else { 0.0 };
+
+    EmblemBlueprint {
+        family: EmblemFamily::Hex,
+        shared_core: LayerSpec {
+            min_radius: 0.0,
+            max_radius: 0.22,
+            targets: Vec::new(),
+            width: 0.0,
+            fill_band: true,
+        },
+        layers: vec![
+            LayerSpec {
+                min_radius: 0.18,
+                max_radius: 0.44,
+                targets: rotated_targets(axis, 6, 60.0),
+                width: 8.5 + loosen,
+                fill_band: false,
+            },
+            LayerSpec {
+                min_radius: 0.28,
+                max_radius: 0.60,
+                targets: vec![axis, axis + 60.0, axis + 180.0, axis + 240.0],
+                width: 10.0 + loosen,
+                fill_band: false,
+            },
+            LayerSpec {
+                min_radius: 0.54,
+                max_radius: 0.76,
+                targets: vec![axis + 30.0, axis + 150.0, axis + 270.0],
+                width: 7.5 + loosen * 0.5,
+                fill_band: false,
+            },
+        ],
+    }
+}
+
+fn pick_axis(rng: &mut ChaCha8Rng) -> f64 {
+    const AXES: [f64; 12] = [
+        0.0, 30.0, 60.0, 90.0, 120.0, 150.0, 180.0, 210.0, 240.0, 270.0, 300.0, 330.0,
+    ];
+    AXES[rng.gen_range(0..AXES.len())]
+}
+
+fn rotated_targets(start: f64, repeats: usize, step: f64) -> Vec<f64> {
+    (0..repeats)
+        .map(|index| start + index as f64 * step)
+        .collect()
+}
+
+fn select_layer_cells(profiles: &[CellProfile], layer: &LayerSpec) -> Vec<usize> {
+    let mut cells = profiles
         .iter()
-        .find(|cell| cell.centroid.distance(&point) < 1e-4)
-        .map(|cell| cell.id)
-}
+        .filter(|profile| {
+            if profile.radius < layer.min_radius || profile.radius > layer.max_radius {
+                return false;
+            }
 
-fn point_key(point: Point) -> (i64, i64) {
-    (
-        (point.x * 100_000.0).round() as i64,
-        (point.y * 100_000.0).round() as i64,
-    )
-}
+            if layer.fill_band || layer.targets.is_empty() {
+                return true;
+            }
 
-fn rotate_point(point: Point, turns: usize, center: Point) -> Point {
-    let angle = turns as f64 * std::f64::consts::PI / 3.0;
-    let translated_x = point.x - center.x;
-    let translated_y = point.y - center.y;
-
-    Point::new(
-        center.x + translated_x * angle.cos() - translated_y * angle.sin(),
-        center.y + translated_x * angle.sin() + translated_y * angle.cos(),
-    )
-}
-
-fn normalize_sector_angle(point: Point, center: Point) -> f64 {
-    let angle = (point.y - center.y).atan2(point.x - center.x).to_degrees();
-    angle.rem_euclid(60.0)
-}
-
-fn select_matching_orbits(
-    orbits: &[SymmetryOrbit],
-    max_radius: f64,
-    motif: &Motif,
-    excluded_orbits: &HashSet<usize>,
-) -> Vec<usize> {
-    let mut matches = Vec::new();
-
-    for (index, orbit) in orbits.iter().enumerate() {
-        if excluded_orbits.contains(&index) {
-            continue;
-        }
-
-        if orbit_matches(orbit, max_radius, motif) {
-            matches.push(index);
-        }
-    }
-
-    if matches.is_empty() {
-        fallback_orbit(orbits, max_radius, motif, excluded_orbits)
-            .into_iter()
-            .collect()
-    } else {
-        matches
-    }
-}
-
-fn select_matching_orbits_from_cells(
-    orbits: &[SymmetryOrbit],
-    max_radius: f64,
-    motif: &Motif,
-    used_cells: &HashSet<usize>,
-) -> Vec<usize> {
-    let mut matches = Vec::new();
-
-    for (index, orbit) in orbits.iter().enumerate() {
-        if orbit.cells.iter().any(|cell| used_cells.contains(cell)) {
-            continue;
-        }
-
-        if orbit_matches(orbit, max_radius, motif) {
-            matches.push(index);
-        }
-    }
-
-    if matches.is_empty() {
-        fallback_orbit_from_cells(orbits, max_radius, motif, used_cells)
-            .into_iter()
-            .collect()
-    } else {
-        matches
-    }
-}
-
-fn orbit_matches(orbit: &SymmetryOrbit, max_radius: f64, motif: &Motif) -> bool {
-    let normalized_radius = orbit.radius / max_radius;
-    if normalized_radius < motif.min_radius || normalized_radius > motif.max_radius {
-        return false;
-    }
-
-    let angle = orbit.sector_angle;
-    let centered_distance = (angle - 30.0).abs();
-    let edge_distance = angle.min(60.0 - angle);
-    let anchor_distance = (angle - motif.anchor).abs();
-
-    match motif.kind {
-        MotifKind::Core | MotifKind::Ring => true,
-        MotifKind::Petals | MotifKind::Crown => anchor_distance <= motif.width,
-        MotifKind::Halo => centered_distance <= motif.width,
-        MotifKind::Spokes => edge_distance <= motif.width,
-    }
-}
-
-fn fallback_orbit(
-    orbits: &[SymmetryOrbit],
-    max_radius: f64,
-    motif: &Motif,
-    excluded_orbits: &HashSet<usize>,
-) -> Option<usize> {
-    let target_radius = (motif.min_radius + motif.max_radius) * 0.5;
-    orbits
-        .iter()
-        .enumerate()
-        .filter(|(index, _)| !excluded_orbits.contains(index))
-        .min_by(|(_, left), (_, right)| {
-            let left_score = ((left.radius / max_radius) - target_radius).abs();
-            let right_score = ((right.radius / max_radius) - target_radius).abs();
-            left_score
-                .partial_cmp(&right_score)
-                .unwrap_or(Ordering::Equal)
+            layer
+                .targets
+                .iter()
+                .any(|target| angular_distance(profile.angle, *target) <= layer.width)
         })
-        .map(|(index, _)| index)
+        .map(|profile| profile.cell_id)
+        .collect::<Vec<_>>();
+
+    cells.sort_unstable();
+    cells
 }
 
-fn fallback_orbit_from_cells(
-    orbits: &[SymmetryOrbit],
-    max_radius: f64,
-    motif: &Motif,
-    used_cells: &HashSet<usize>,
-) -> Option<usize> {
-    let target_radius = (motif.min_radius + motif.max_radius) * 0.5;
-    orbits
-        .iter()
-        .enumerate()
-        .filter(|(_, orbit)| !orbit.cells.iter().any(|cell| used_cells.contains(cell)))
-        .min_by(|(_, left), (_, right)| {
-            let left_score = ((left.radius / max_radius) - target_radius).abs();
-            let right_score = ((right.radius / max_radius) - target_radius).abs();
-            left_score
-                .partial_cmp(&right_score)
-                .unwrap_or(Ordering::Equal)
-        })
-        .map(|(index, _)| index)
+fn normalize_angle(point: Point, center: Point) -> f64 {
+    (point.y - center.y)
+        .atan2(point.x - center.x)
+        .to_degrees()
+        .rem_euclid(360.0)
 }
 
-fn union_orbits(left: &[usize], right: &[usize]) -> Vec<usize> {
+fn angular_distance(left: f64, right: f64) -> f64 {
+    let delta = (left - right).rem_euclid(360.0);
+    delta.min(360.0 - delta)
+}
+
+fn union_cells(left: &[usize], right: &[usize]) -> Vec<usize> {
     let mut merged = left.to_vec();
-    for orbit_id in right {
-        if !merged.contains(orbit_id) {
-            merged.push(*orbit_id);
+    for cell in right {
+        if !merged.contains(cell) {
+            merged.push(*cell);
         }
     }
     merged.sort_unstable();
     merged
-}
-
-fn collect_cells(orbits: &[SymmetryOrbit], orbit_ids: &[usize]) -> Vec<usize> {
-    let mut cells = Vec::new();
-    for orbit_id in orbit_ids {
-        if let Some(orbit) = orbits.get(*orbit_id) {
-            for cell_id in &orbit.cells {
-                if !cells.contains(cell_id) {
-                    cells.push(*cell_id);
-                }
-            }
-        }
-    }
-    cells.sort_unstable();
-    cells
 }
 
 fn intersection_cells(left: &[usize], right: &[usize]) -> Vec<usize> {
@@ -609,6 +551,14 @@ fn subtract_cells(source: &[usize], to_remove: &[usize]) -> Vec<usize> {
         .iter()
         .copied()
         .filter(|cell| !to_remove.contains(cell))
+        .collect()
+}
+
+fn subtract_used(source: &[usize], used_cells: &HashSet<usize>) -> Vec<usize> {
+    source
+        .iter()
+        .copied()
+        .filter(|cell| !used_cells.contains(cell))
         .collect()
 }
 
@@ -668,24 +618,95 @@ mod tests {
     }
 
     #[test]
-    fn modern_shapes_follow_complete_rotational_orbits() {
-        let mut generator = Generator::new(5, 4, 0.8, Some(7));
+    fn modern_generation_has_a_bold_center() {
+        let mut generator = Generator::new(4, 4, 0.8, Some(7));
         generator.set_allow_overlap(true);
         generator.generate().unwrap();
 
         let grid = generator.grid().unwrap();
-        let orbits = build_rotational_orbits(grid);
+        let profiles = build_cell_profiles(grid);
+        let center_cells = profiles
+            .iter()
+            .filter(|profile| profile.radius <= 0.2)
+            .map(|profile| profile.cell_id)
+            .collect::<Vec<_>>();
 
-        for shape in generator.shapes() {
-            for orbit in &orbits {
-                let matches = orbit
-                    .cells
-                    .iter()
-                    .filter(|cell_id| shape.cells.contains(cell_id))
-                    .count();
+        let center_coverage = generator
+            .shapes()
+            .iter()
+            .flat_map(|shape| shape.cells.iter())
+            .filter(|cell_id| center_cells.contains(cell_id))
+            .count();
 
-                assert!(matches == 0 || matches == orbit.cells.len());
-            }
-        }
+        assert!(center_coverage > 0);
+    }
+
+    #[test]
+    fn modern_generation_is_not_limited_to_complete_rotational_orbits() {
+        let mut generator = Generator::new(5, 4, 0.8, Some(19));
+        generator.set_allow_overlap(false);
+        generator.generate().unwrap();
+
+        let grid = generator.grid().unwrap();
+        let center = grid.hex_grid().center;
+        let lookup = grid
+            .cells()
+            .iter()
+            .map(|cell| (point_key(cell.centroid), cell.id))
+            .collect::<std::collections::HashMap<_, _>>();
+
+        let shape = generator
+            .shapes()
+            .iter()
+            .find(|shape| !shape.is_empty())
+            .unwrap();
+
+        let has_partial_orbit = shape.cells.iter().any(|cell_id| {
+            let cell = grid.get_cell(*cell_id).unwrap();
+            let orbit_matches = (1..6)
+                .filter_map(|turns| {
+                    lookup_rotated_cell_id(grid, &lookup, cell.centroid, turns, center)
+                })
+                .filter(|rotated_id| shape.cells.contains(rotated_id))
+                .count();
+            orbit_matches > 0 && orbit_matches < 5
+        });
+
+        assert!(has_partial_orbit);
+    }
+
+    fn point_key(point: Point) -> (i64, i64) {
+        (
+            (point.x * 100_000.0).round() as i64,
+            (point.y * 100_000.0).round() as i64,
+        )
+    }
+
+    fn rotate_point(point: Point, turns: usize, center: Point) -> Point {
+        let angle = turns as f64 * std::f64::consts::PI / 3.0;
+        let translated_x = point.x - center.x;
+        let translated_y = point.y - center.y;
+
+        Point::new(
+            center.x + translated_x * angle.cos() - translated_y * angle.sin(),
+            center.y + translated_x * angle.sin() + translated_y * angle.cos(),
+        )
+    }
+
+    fn lookup_rotated_cell_id(
+        grid: &TriangularGrid,
+        lookup: &std::collections::HashMap<(i64, i64), usize>,
+        point: Point,
+        turns: usize,
+        center: Point,
+    ) -> Option<usize> {
+        let rotated = rotate_point(point, turns, center);
+
+        lookup.get(&point_key(rotated)).copied().or_else(|| {
+            grid.cells()
+                .iter()
+                .find(|cell| cell.centroid.distance(&rotated) < 1e-4)
+                .map(|cell| cell.id)
+        })
     }
 }

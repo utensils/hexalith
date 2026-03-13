@@ -21,3 +21,11 @@ fi
 "${RUNNER[@]}" -- --format png --seed 8808 --theme blues --grid-size 4 --shapes 4 "$OUT_DIR/emblem-blues-seed-8808.png"
 "${RUNNER[@]}" -- --format svg --seed 3318 --theme classic --grid-size 4 --shapes 4 "$OUT_DIR/emblem-classic-seed-3318.svg"
 "${RUNNER[@]}" -- --format png --seed 3318 --theme classic --grid-size 4 --shapes 4 "$OUT_DIR/emblem-classic-seed-3318.png"
+
+# Refined compact brand-mark samples from the latest logo-like pass.
+"${RUNNER[@]}" -- --format png --seed 1201 --theme ink --grid-size 4 --shapes 4 "$OUT_DIR/brand-ink-seed-1201.png"
+"${RUNNER[@]}" -- --format png --seed 2048 --theme horizon --grid-size 4 --shapes 4 "$OUT_DIR/brand-horizon-seed-2048.png"
+"${RUNNER[@]}" -- --format png --seed 2206 --theme ember --grid-size 4 --shapes 4 "$OUT_DIR/brand-ember-seed-2206.png"
+"${RUNNER[@]}" -- --format png --seed 3318 --theme orchid --grid-size 4 --shapes 4 "$OUT_DIR/brand-orchid-seed-3318.png"
+"${RUNNER[@]}" -- --format png --seed 4484 --theme citrus --grid-size 4 --shapes 4 "$OUT_DIR/brand-citrus-seed-4484.png"
+"${RUNNER[@]}" -- --format png --seed 5150 --theme classic --grid-size 4 --shapes 4 "$OUT_DIR/brand-classic-seed-5150.png"

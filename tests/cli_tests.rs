@@ -259,7 +259,8 @@ fn test_classic_mode_with_themes() {
 
     // Test classic mode with different themes
     let themes = vec![
-        "mesos", "google", "blues", "greens", "reds", "purples", "rainbow",
+        "mesos", "google", "blues", "greens", "reds", "purples", "rainbow", "ink", "ember",
+        "horizon", "citrus", "orchid",
     ];
 
     for theme in themes {
@@ -310,7 +311,7 @@ fn test_all_options_combined() {
         .stdout(predicate::str::contains("Grid size: 6"))
         .stdout(predicate::str::contains("Shapes: 5"))
         .stdout(predicate::str::contains(
-            "Symmetry: radial rotational (6-way)",
+            "Symmetry: emblem (bilateral / triadic / restrained hex)",
         ))
         .stdout(predicate::str::contains("Opacity: 0.7"));
 

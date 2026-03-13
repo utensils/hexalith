@@ -17,7 +17,7 @@ The web frontend has been removed. The repo is intentionally focused on local CL
 - SVG or PNG output
 - Emblem-first modern mode with bilateral, triadic, and restrained hex composition by default
 - Classic mode with a fixed 24-triangle layout
-- Multiple color themes: `classic`, `google`, `blues`, `greens`, `reds`, `purples`, `rainbow`
+- Multiple color themes: `ink`, `horizon`, `ember`, `citrus`, `orchid`, `classic`, `google`, `blues`, `greens`, `reds`, `purples`, `rainbow`
 - Clipboard copy support
 - Automatic parent directory creation for output paths
 
@@ -34,7 +34,7 @@ nix develop -c cargo run -- --format svg output/logo.svg
 You can also use the app entrypoint directly:
 
 ```bash
-nix run . -- --seed 42 --theme classic output/logo.png
+nix run . -- --seed 42 --theme ink output/logo.png
 ```
 
 ### With a local Rust toolchain
@@ -54,7 +54,7 @@ hexalith [OPTIONS] [OUTPUT]
 Examples:
 
 ```bash
-# Default PNG output
+# Default PNG output (`ink` theme)
 cargo run -- output/logo.png
 
 # SVG with deterministic seed
@@ -113,4 +113,4 @@ nix develop -c cargo clippy --all-targets --all-features
 
 ## Rendering notes
 
-Modern mode now builds logos from seeded emblem blueprints instead of full six-way rotational orbits. The defaults bias toward a bold center, fewer outer repetitions, cleaner negative space, and a stronger silhouette while staying deterministic from the CLI.
+Modern mode now builds logos from seeded emblem blueprints instead of full six-way rotational orbits. The defaults bias toward compact, center-led silhouettes, fewer outer repetitions, clearer negative space, and more deliberate inner structure while staying deterministic from the CLI.

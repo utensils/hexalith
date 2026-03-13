@@ -18,6 +18,11 @@ pub enum Theme {
     Reds,    // Red color theme
     Purples, // Purple color theme
     Rainbow, // All colors of the rainbow
+    Ink,     // Deep blue brand palette
+    Ember,   // Warm red-orange brand palette
+    Horizon, // Coastal blue-green brand palette
+    Citrus,  // Punchy lime-orange brand palette
+    Orchid,  // Refined violet-rose brand palette
 }
 
 impl std::fmt::Display for Theme {
@@ -30,6 +35,11 @@ impl std::fmt::Display for Theme {
             Theme::Reds => write!(f, "reds"),
             Theme::Purples => write!(f, "purples"),
             Theme::Rainbow => write!(f, "rainbow"),
+            Theme::Ink => write!(f, "ink"),
+            Theme::Ember => write!(f, "ember"),
+            Theme::Horizon => write!(f, "horizon"),
+            Theme::Citrus => write!(f, "citrus"),
+            Theme::Orchid => write!(f, "orchid"),
         }
     }
 }
@@ -45,6 +55,11 @@ impl From<&str> for Theme {
             "reds" => Theme::Reds,
             "purples" => Theme::Purples,
             "rainbow" => Theme::Rainbow,
+            "ink" => Theme::Ink,
+            "ember" => Theme::Ember,
+            "horizon" => Theme::Horizon,
+            "citrus" => Theme::Citrus,
+            "orchid" => Theme::Orchid,
             _ => Theme::Classic, // Default to Classic theme if unknown
         }
     }
@@ -70,6 +85,11 @@ impl ColorManager {
             "reds".to_string(),
             "purples".to_string(),
             "rainbow".to_string(),
+            "ink".to_string(),
+            "ember".to_string(),
+            "horizon".to_string(),
+            "citrus".to_string(),
+            "orchid".to_string(),
             "mesos".to_string(),
         ]
     }
@@ -84,6 +104,11 @@ impl ColorManager {
             Theme::Reds => Self::reds_theme(seed),
             Theme::Purples => Self::purples_theme(seed),
             Theme::Rainbow => Self::rainbow_theme(seed),
+            Theme::Ink => Self::ink_theme(seed),
+            Theme::Ember => Self::ember_theme(seed),
+            Theme::Horizon => Self::horizon_theme(seed),
+            Theme::Citrus => Self::citrus_theme(seed),
+            Theme::Orchid => Self::orchid_theme(seed),
         }
     }
 
@@ -267,6 +292,101 @@ impl ColorManager {
                 "#8A2BE2".to_string(), // Blue Violet
                 "#FF00FF".to_string(), // Magenta
                 "#C71585".to_string(), // Medium Violet Red
+            ],
+            seed,
+        )
+    }
+
+    /// Ink theme - deep navy through electric cyan for crisp brand marks
+    pub fn ink_theme(seed: Option<u64>) -> Self {
+        Self::new(
+            vec![
+                "#122B49".to_string(),
+                "#173A63".to_string(),
+                "#1C4C81".to_string(),
+                "#235F9E".to_string(),
+                "#2C74BD".to_string(),
+                "#3790D2".to_string(),
+                "#40A9E4".to_string(),
+                "#57BFEF".to_string(),
+                "#6FD4F7".to_string(),
+                "#7DE3F7".to_string(),
+            ],
+            seed,
+        )
+    }
+
+    /// Ember theme - warm terracotta through golden amber
+    pub fn ember_theme(seed: Option<u64>) -> Self {
+        Self::new(
+            vec![
+                "#7D1D1D".to_string(),
+                "#992629".to_string(),
+                "#B53033".to_string(),
+                "#CF4533".to_string(),
+                "#E35B2C".to_string(),
+                "#F0712A".to_string(),
+                "#F78C2B".to_string(),
+                "#F5AA3C".to_string(),
+                "#F2BF58".to_string(),
+                "#F7D27B".to_string(),
+            ],
+            seed,
+        )
+    }
+
+    /// Horizon theme - oceanic blues and aquas with a clean modern finish
+    pub fn horizon_theme(seed: Option<u64>) -> Self {
+        Self::new(
+            vec![
+                "#114B5F".to_string(),
+                "#16697A".to_string(),
+                "#1D7A8C".to_string(),
+                "#2493A5".to_string(),
+                "#2CA6BA".to_string(),
+                "#39B9C9".to_string(),
+                "#49CBD3".to_string(),
+                "#63D9D4".to_string(),
+                "#88E1D0".to_string(),
+                "#B6EAC7".to_string(),
+            ],
+            seed,
+        )
+    }
+
+    /// Citrus theme - vivid citrus accents balanced with green-teal support
+    pub fn citrus_theme(seed: Option<u64>) -> Self {
+        Self::new(
+            vec![
+                "#8CCF2F".to_string(),
+                "#A4DA35".to_string(),
+                "#C2E33B".to_string(),
+                "#E0E93E".to_string(),
+                "#F3D63B".to_string(),
+                "#F7BF33".to_string(),
+                "#F59E2F".to_string(),
+                "#EF7F2D".to_string(),
+                "#4FC3A1".to_string(),
+                "#26B7B0".to_string(),
+            ],
+            seed,
+        )
+    }
+
+    /// Orchid theme - restrained violets, magentas, and soft lilacs
+    pub fn orchid_theme(seed: Option<u64>) -> Self {
+        Self::new(
+            vec![
+                "#5A2A83".to_string(),
+                "#6A3291".to_string(),
+                "#7C3D9F".to_string(),
+                "#8E49AD".to_string(),
+                "#A257B7".to_string(),
+                "#B666BC".to_string(),
+                "#C978BD".to_string(),
+                "#DA8DBA".to_string(),
+                "#E8A7C7".to_string(),
+                "#F1C5DA".to_string(),
             ],
             seed,
         )

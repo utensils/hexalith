@@ -28,8 +28,8 @@ pub struct Cli {
     #[arg(short, long)]
     pub uuid: Option<String>,
 
-    /// Color theme (ink, horizon, ember, citrus, orchid, classic, google, blues, greens, reds, purples, rainbow)
-    #[arg(short = 't', long = "theme", default_value = "ink")]
+    /// Color theme (classic, ink, horizon, ember, citrus, orchid, google, blues, greens, reds, purples, rainbow)
+    #[arg(short = 't', long = "theme", default_value = "classic")]
     pub theme: String,
 
     /// Number of shapes to generate

@@ -61,11 +61,9 @@ struct EmblemBlueprint {
 struct LayerSpec {
     min_radius: f64,
     max_radius: f64,
-    focus_radius: f64,
     targets: Vec<f64>,
     width: f64,
     fill_band: bool,
-    max_cells: usize,
 }
 
 impl Generator {
@@ -77,7 +75,7 @@ impl Generator {
             seed,
             grid: None,
             shapes: Vec::new(),
-            theme: Theme::Ink,
+            theme: Theme::Classic,
             allow_overlap: false,
             unique_shapes: false,
             classic_mode: false,
@@ -366,48 +364,38 @@ fn bilateral_blueprint(rng: &mut ChaCha8Rng, unique_shapes: bool) -> EmblemBluep
         shared_core: LayerSpec {
             min_radius: 0.0,
             max_radius: 0.16,
-            focus_radius: 0.08,
             targets: Vec::new(),
             width: 0.0,
             fill_band: true,
-            max_cells: 10,
         },
         layers: vec![
             LayerSpec {
                 min_radius: 0.12,
-                max_radius: 0.42,
-                focus_radius: 0.25,
-                targets: vec![axis - 22.0, axis + 22.0],
-                width: 13.5 + loosen,
+                max_radius: 0.46,
+                targets: vec![axis - 26.0, axis + 26.0],
+                width: 17.0 + loosen,
                 fill_band: false,
-                max_cells: 14,
             },
             LayerSpec {
                 min_radius: 0.18,
-                max_radius: 0.50,
-                focus_radius: 0.32,
+                max_radius: 0.62,
                 targets: vec![axis + 180.0],
-                width: 11.0,
+                width: 16.0,
                 fill_band: false,
-                max_cells: 8,
             },
             LayerSpec {
-                min_radius: 0.32,
-                max_radius: 0.58,
-                focus_radius: 0.46,
-                targets: vec![axis - 54.0, axis + 54.0],
-                width: 8.5 + loosen * 0.5,
-                fill_band: false,
-                max_cells: 8,
-            },
-            LayerSpec {
-                min_radius: 0.38,
-                max_radius: 0.64,
-                focus_radius: 0.52,
+                min_radius: 0.48,
+                max_radius: 0.80,
                 targets: vec![axis - 8.0, axis + 8.0],
-                width: 6.5 + loosen,
+                width: 9.0 + loosen * 0.5,
                 fill_band: false,
-                max_cells: 6,
+            },
+            LayerSpec {
+                min_radius: 0.30,
+                max_radius: 0.56,
+                targets: vec![axis - 54.0, axis + 54.0],
+                width: 10.0 + loosen,
+                fill_band: false,
             },
         ],
     }
@@ -421,40 +409,32 @@ fn triadic_blueprint(rng: &mut ChaCha8Rng, unique_shapes: bool) -> EmblemBluepri
         family: EmblemFamily::Triadic,
         shared_core: LayerSpec {
             min_radius: 0.0,
-            max_radius: 0.18,
-            focus_radius: 0.09,
+            max_radius: 0.20,
             targets: Vec::new(),
             width: 0.0,
             fill_band: true,
-            max_cells: 12,
         },
         layers: vec![
             LayerSpec {
-                min_radius: 0.12,
-                max_radius: 0.42,
-                focus_radius: 0.26,
-                targets: rotated_targets(axis + 12.0, 3, 120.0),
-                width: 12.5 + loosen,
-                fill_band: false,
-                max_cells: 15,
-            },
-            LayerSpec {
-                min_radius: 0.18,
+                min_radius: 0.14,
                 max_radius: 0.50,
-                focus_radius: 0.34,
-                targets: rotated_targets(axis + 72.0, 3, 120.0),
-                width: 9.0 + loosen,
+                targets: rotated_targets(axis + 12.0, 3, 120.0),
+                width: 15.0 + loosen,
                 fill_band: false,
-                max_cells: 10,
             },
             LayerSpec {
-                min_radius: 0.40,
-                max_radius: 0.64,
-                focus_radius: 0.50,
-                targets: rotated_targets(axis + 12.0, 3, 120.0),
-                width: 5.5 + loosen * 0.5,
+                min_radius: 0.22,
+                max_radius: 0.58,
+                targets: rotated_targets(axis + 72.0, 3, 120.0),
+                width: 12.0 + loosen,
                 fill_band: false,
-                max_cells: 6,
+            },
+            LayerSpec {
+                min_radius: 0.50,
+                max_radius: 0.82,
+                targets: rotated_targets(axis + 12.0, 3, 120.0),
+                width: 7.0 + loosen * 0.5,
+                fill_band: false,
             },
         ],
     }
@@ -468,40 +448,32 @@ fn hex_blueprint(rng: &mut ChaCha8Rng, unique_shapes: bool) -> EmblemBlueprint {
         family: EmblemFamily::Hex,
         shared_core: LayerSpec {
             min_radius: 0.0,
-            max_radius: 0.18,
-            focus_radius: 0.10,
+            max_radius: 0.22,
             targets: Vec::new(),
             width: 0.0,
             fill_band: true,
-            max_cells: 12,
         },
         layers: vec![
             LayerSpec {
-                min_radius: 0.14,
-                max_radius: 0.34,
-                focus_radius: 0.24,
+                min_radius: 0.18,
+                max_radius: 0.44,
                 targets: rotated_targets(axis, 6, 60.0),
-                width: 5.5 + loosen,
+                width: 8.5 + loosen,
                 fill_band: false,
-                max_cells: 12,
             },
             LayerSpec {
-                min_radius: 0.22,
-                max_radius: 0.50,
-                focus_radius: 0.36,
-                targets: vec![axis, axis + 60.0, axis + 180.0, axis + 240.0],
-                width: 7.5 + loosen,
-                fill_band: false,
-                max_cells: 10,
-            },
-            LayerSpec {
-                min_radius: 0.38,
+                min_radius: 0.28,
                 max_radius: 0.60,
-                focus_radius: 0.48,
-                targets: vec![axis + 30.0, axis + 150.0, axis + 270.0],
-                width: 5.5 + loosen * 0.5,
+                targets: vec![axis, axis + 60.0, axis + 180.0, axis + 240.0],
+                width: 10.0 + loosen,
                 fill_band: false,
-                max_cells: 6,
+            },
+            LayerSpec {
+                min_radius: 0.54,
+                max_radius: 0.76,
+                targets: vec![axis + 30.0, axis + 150.0, axis + 270.0],
+                width: 7.5 + loosen * 0.5,
+                fill_band: false,
             },
         ],
     }
@@ -521,49 +493,25 @@ fn rotated_targets(start: f64, repeats: usize, step: f64) -> Vec<f64> {
 }
 
 fn select_layer_cells(profiles: &[CellProfile], layer: &LayerSpec) -> Vec<usize> {
-    let mut scored = profiles
+    let mut cells = profiles
         .iter()
         .filter(|profile| {
             if profile.radius < layer.min_radius || profile.radius > layer.max_radius {
                 return false;
             }
-            true
-        })
-        .map(|profile| {
-            let radial_score = (profile.radius - layer.focus_radius).abs();
-            let angle_score = if layer.fill_band || layer.targets.is_empty() {
-                0.0
-            } else {
-                layer
-                    .targets
-                    .iter()
-                    .map(|target| angular_distance(profile.angle, *target))
-                    .fold(f64::INFINITY, f64::min)
-                    / layer.width.max(1.0)
-            };
 
-            let center_bias = if profile.radius > layer.focus_radius {
-                (profile.radius - layer.focus_radius) * 0.1
-            } else {
-                0.0
-            };
+            if layer.fill_band || layer.targets.is_empty() {
+                return true;
+            }
 
-            (profile.cell_id, radial_score + angle_score + center_bias)
+            layer
+                .targets
+                .iter()
+                .any(|target| angular_distance(profile.angle, *target) <= layer.width)
         })
+        .map(|profile| profile.cell_id)
         .collect::<Vec<_>>();
 
-    scored.sort_by(|left, right| {
-        left.1
-            .partial_cmp(&right.1)
-            .unwrap_or(Ordering::Equal)
-            .then_with(|| left.0.cmp(&right.0))
-    });
-
-    let mut cells = scored
-        .into_iter()
-        .take(layer.max_cells.max(1))
-        .map(|(cell_id, _)| cell_id)
-        .collect::<Vec<_>>();
     cells.sort_unstable();
     cells
 }
@@ -691,74 +639,5 @@ mod tests {
             .count();
 
         assert!(center_coverage > 0);
-    }
-
-    #[test]
-    fn modern_generation_is_not_limited_to_complete_rotational_orbits() {
-        let mut generator = Generator::new(5, 4, 0.8, Some(19));
-        generator.set_allow_overlap(false);
-        generator.generate().unwrap();
-
-        let grid = generator.grid().unwrap();
-        let center = grid.hex_grid().center;
-        let lookup = grid
-            .cells()
-            .iter()
-            .map(|cell| (point_key(cell.centroid), cell.id))
-            .collect::<std::collections::HashMap<_, _>>();
-
-        let shape = generator
-            .shapes()
-            .iter()
-            .find(|shape| !shape.is_empty())
-            .unwrap();
-
-        let has_partial_orbit = shape.cells.iter().any(|cell_id| {
-            let cell = grid.get_cell(*cell_id).unwrap();
-            let orbit_matches = (1..6)
-                .filter_map(|turns| {
-                    lookup_rotated_cell_id(grid, &lookup, cell.centroid, turns, center)
-                })
-                .filter(|rotated_id| shape.cells.contains(rotated_id))
-                .count();
-            orbit_matches > 0 && orbit_matches < 5
-        });
-
-        assert!(has_partial_orbit);
-    }
-
-    fn point_key(point: Point) -> (i64, i64) {
-        (
-            (point.x * 100_000.0).round() as i64,
-            (point.y * 100_000.0).round() as i64,
-        )
-    }
-
-    fn rotate_point(point: Point, turns: usize, center: Point) -> Point {
-        let angle = turns as f64 * std::f64::consts::PI / 3.0;
-        let translated_x = point.x - center.x;
-        let translated_y = point.y - center.y;
-
-        Point::new(
-            center.x + translated_x * angle.cos() - translated_y * angle.sin(),
-            center.y + translated_x * angle.sin() + translated_y * angle.cos(),
-        )
-    }
-
-    fn lookup_rotated_cell_id(
-        grid: &TriangularGrid,
-        lookup: &std::collections::HashMap<(i64, i64), usize>,
-        point: Point,
-        turns: usize,
-        center: Point,
-    ) -> Option<usize> {
-        let rotated = rotate_point(point, turns, center);
-
-        lookup.get(&point_key(rotated)).copied().or_else(|| {
-            grid.cells()
-                .iter()
-                .find(|cell| cell.centroid.distance(&rotated) < 1e-4)
-                .map(|cell| cell.id)
-        })
     }
 }

@@ -29,3 +29,9 @@ fi
 "${RUNNER[@]}" -- --format png --seed 3318 --theme orchid --grid-size 4 --shapes 4 "$OUT_DIR/emblem-orchid-seed-3318.png"
 "${RUNNER[@]}" -- --format png --seed 4484 --theme citrus --grid-size 4 --shapes 4 "$OUT_DIR/emblem-citrus-seed-4484.png"
 "${RUNNER[@]}" -- --format png --seed 5150 --theme classic --grid-size 4 --shapes 4 "$OUT_DIR/emblem-classic-seed-5150.png"
+
+# Glyph-shaped emblem examples.
+"${RUNNER[@]}" -- --format png --seed 6001 --theme ember --letter J "$OUT_DIR/letter-j-ember-seed-6001.png"
+"${RUNNER[@]}" -- --format svg --seed 6001 --theme ember --letter J "$OUT_DIR/letter-j-ember-seed-6001.svg"
+"${RUNNER[@]}" -- --format png --seed 7123 --theme horizon --letter A "$OUT_DIR/letter-a-horizon-seed-7123.png"
+"${RUNNER[@]}" -- --format png --seed 8450 --theme ink --letter M "$OUT_DIR/letter-m-ink-seed-8450.png"

@@ -1,11 +1,13 @@
 pub mod classic;
 mod color;
+mod glyph;
 pub mod grid;
 pub mod shape;
 
 use crate::Result;
 use classic::ClassicGenerator;
 use color::ColorManager;
+use glyph::build_glyph_layers;
 use grid::{Point, TriangularGrid};
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
@@ -32,6 +34,7 @@ pub struct Generator {
     allow_overlap: bool,
     unique_shapes: bool,
     classic_mode: bool,
+    letter: Option<char>,
     classic_generator: Option<ClassicGenerator>,
     symmetry_mode: SymmetryMode,
 }
@@ -79,6 +82,7 @@ impl Generator {
             allow_overlap: false,
             unique_shapes: false,
             classic_mode: false,
+            letter: None,
             classic_generator: None,
             symmetry_mode: SymmetryMode::Emblem,
         }
@@ -120,6 +124,15 @@ impl Generator {
         self
     }
 
+    pub fn set_letter(&mut self, letter: Option<char>) -> &mut Self {
+        self.letter = letter.map(|value| value.to_ascii_uppercase());
+        self
+    }
+
+    pub fn letter(&self) -> Option<char> {
+        self.letter
+    }
+
     pub fn generate(&mut self) -> Result<()> {
         self.shapes.clear();
         self.classic_generator = None;
@@ -133,7 +146,114 @@ impl Generator {
 
         let grid = TriangularGrid::new(100.0, self.grid_size);
         self.grid = Some(grid);
+        if self.letter.is_some() {
+            return self.generate_letter_emblem();
+        }
         self.generate_emblem_modern()
+    }
+
+    fn generate_letter_emblem(&mut self) -> Result<()> {
+        let grid = self.grid.as_ref().ok_or("Grid not initialized")?;
+        let letter = self.letter.ok_or("Letter mode requested without a glyph")?;
+        let mut rng = match self.seed {
+            Some(seed) => {
+                let glyph_seed = seed ^ ((letter as u64) << 40) ^ 0xC3C3_5A5A_9696_F0F0;
+                ChaCha8Rng::seed_from_u64(glyph_seed)
+            }
+            None => ChaCha8Rng::from_entropy(),
+        };
+        let mut color_manager = ColorManager::with_theme(self.theme, self.seed);
+        let layers = build_glyph_layers(grid, letter, &mut rng);
+
+        if layers.core.is_empty() {
+            return self.generate_emblem_modern();
+        }
+
+        let colors = color_manager.get_random_colors(self.shapes_count.max(4) as usize + 2);
+        let primary = colors[0].clone();
+        let secondary = pick_contrasting_color(&primary, &colors);
+        let tertiary = color_manager.get_different_color(&[primary.clone(), secondary.clone()]);
+        let quaternary = color_manager.get_different_color(&[
+            primary.clone(),
+            secondary.clone(),
+            tertiary.clone(),
+        ]);
+
+        let mut shell_union = union_cells(&layers.highlight_shell, &layers.shadow_shell);
+        shell_union.sort_unstable();
+        let mut halo_union = union_cells(&layers.halo_band, &layers.halo);
+        halo_union.sort_unstable();
+
+        if self.allow_overlap {
+            self.shapes.push(build_shape(
+                primary.clone(),
+                self.opacity,
+                layers.core.clone(),
+            ));
+
+            let highlight_cells = union_cells(&layers.highlight, &layers.highlight_shell);
+            if !highlight_cells.is_empty() {
+                self.shapes.push(build_shape(
+                    blend_colors(&primary, &secondary),
+                    (self.opacity + 0.08).min(1.0),
+                    highlight_cells,
+                ));
+            }
+
+            let shadow_cells = union_cells(&layers.shadow, &layers.shadow_shell);
+            if !shadow_cells.is_empty() {
+                self.shapes.push(build_shape(
+                    secondary.clone(),
+                    (self.opacity * 0.95).clamp(0.0, 1.0),
+                    shadow_cells,
+                ));
+            }
+
+            if !halo_union.is_empty() {
+                self.shapes.push(build_shape(
+                    tertiary.clone(),
+                    (self.opacity * 0.72).clamp(0.0, 1.0),
+                    halo_union,
+                ));
+            }
+        } else {
+            let mut used = HashSet::new();
+
+            let ordered_layers = [
+                layers.core.clone(),
+                layers.highlight.clone(),
+                layers.shadow.clone(),
+                union_cells(&shell_union, &halo_union),
+            ];
+            let ordered_colors = [
+                primary.clone(),
+                secondary.clone(),
+                tertiary.clone(),
+                quaternary,
+            ];
+
+            for (cells, color) in ordered_layers.into_iter().zip(ordered_colors) {
+                if self.shapes.len() >= self.shapes_count as usize {
+                    break;
+                }
+
+                let trimmed = subtract_used(&cells, &used);
+                if trimmed.is_empty() {
+                    continue;
+                }
+
+                used.extend(trimmed.iter().copied());
+                self.shapes.push(build_shape(color, self.opacity, trimmed));
+            }
+        }
+
+        if self.shapes.is_empty() {
+            self.shapes
+                .push(build_shape(primary, self.opacity, layers.core.clone()));
+        }
+
+        self.inflate_shape_count(&mut color_manager);
+        Ok(())
     }
 
     fn generate_emblem_modern(&mut self) -> Result<()> {
@@ -716,5 +836,41 @@ mod tests {
             .count();
 
         assert!(center_coverage > 0);
+    }
+
+    #[test]
+    fn letter_generation_supports_full_alphabet() {
+        for letter in 'A'..='Z' {
+            let mut generator = Generator::new(6, 4, 0.8, Some(42));
+            generator.set_allow_overlap(true).set_letter(Some(letter));
+            generator.generate().unwrap();
+
+            assert!(
+                !generator.shapes().is_empty(),
+                "expected shapes for letter {letter}"
+            );
+
+            let svg = svg::generate_svg(&generator, 512, 512).unwrap();
+            assert!(
+                svg.contains("<path"),
+                "expected svg path for letter {letter}"
+            );
+        }
+    }
+
+    #[test]
+    fn letter_generation_is_seed_stable() {
+        let mut first = Generator::new(6, 4, 0.8, Some(42));
+        first.set_allow_overlap(true).set_letter(Some('J'));
+        first.generate().unwrap();
+
+        let mut second = Generator::new(6, 4, 0.8, Some(42));
+        second.set_allow_overlap(true).set_letter(Some('J'));
+        second.generate().unwrap();
+
+        let first_svg = svg::generate_svg(&first, 512, 512).unwrap();
+        let second_svg = svg::generate_svg(&second, 512, 512).unwrap();
+
+        assert_eq!(first_svg, second_svg);
     }
 }

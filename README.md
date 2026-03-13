@@ -16,6 +16,7 @@ The web frontend has been removed. The repo is intentionally focused on local CL
 - Random or seeded logo generation
 - SVG or PNG output
 - Emblem-first modern mode with the polished centered composition restored as the default
+- Letter-shaped emblem mode for deterministic A-Z renders
 - Classic mode with a fixed 24-triangle layout
 - Multiple color themes: `ink`, `horizon`, `ember`, `citrus`, `orchid`, `classic`, `google`, `blues`, `greens`, `reds`, `purples`, `rainbow`
 - Clipboard copy support
@@ -69,6 +70,12 @@ cargo run -- --grid-size 6 --shapes 5 --opacity 0.7 output/variant.png
 # Emblem-first modern default
 cargo run -- --seed 4242 --theme blues output/emblem-mark.png
 
+# Letter-shaped emblem
+cargo run -- --seed 4242 --theme ember --letter J output/letter-j.png
+
+# SVG glyph render with UUID-derived determinism
+cargo run -- --format svg --uuid f47ac10b-58cc-4372-a567-0e02b2c3d479 --letter A output/letter-a.svg
+
 # Copy SVG to clipboard instead of writing a file
 cargo run -- --copy --format svg
 ```
@@ -114,3 +121,5 @@ nix develop -c cargo clippy --all-targets --all-features
 ## Rendering notes
 
 Modern mode now builds logos from seeded emblem blueprints with the earlier polished centered composition restored as the default. The CLI remains deterministic, and the expanded theme set can be applied on top of that baseline.
+
+Passing `--letter A` through `--letter Z` switches the modern generator into a glyph-shaped emblem mode. The generator uses the same seed and UUID flow as the default emblem mode, but it raises the effective default grid density from `4` to `6` unless you explicitly set `--grid-size` so letterforms stay legible.

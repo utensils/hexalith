@@ -9,7 +9,8 @@ fn test_help_output() {
     cmd.arg("--help");
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("Usage:"));
+        .stdout(predicate::str::contains("Usage:"))
+        .stdout(predicate::str::contains("--letter"));
 }
 
 #[test]
@@ -83,6 +84,33 @@ fn test_deterministic_output() {
 }
 
 #[test]
+fn test_deterministic_letter_output() {
+    let temp_dir = tempdir().unwrap();
+    let output_path_a = temp_dir.path().join("logo-a.png");
+    let output_path_b = temp_dir.path().join("logo-b.png");
+
+    let mut cmd = Command::cargo_bin("hexalith").unwrap();
+    cmd.arg("--seed")
+        .arg("12345")
+        .arg("--letter")
+        .arg("J")
+        .arg(output_path_a.to_str().unwrap());
+    cmd.assert().success();
+
+    let mut cmd = Command::cargo_bin("hexalith").unwrap();
+    cmd.arg("--seed")
+        .arg("12345")
+        .arg("--letter")
+        .arg("J")
+        .arg(output_path_b.to_str().unwrap());
+    cmd.assert().success();
+
+    let content_a = fs::read(&output_path_a).unwrap();
+    let content_b = fs::read(&output_path_b).unwrap();
+    assert_eq!(content_a, content_b);
+}
+
+#[test]
 fn test_different_shapes_count() {
     let temp_dir = tempdir().unwrap();
     let output1_path = temp_dir.path().join("logo1.png");
@@ -146,6 +174,38 @@ fn test_verbose_output() {
     cmd.assert()
         .success()
         .stdout(predicate::str::contains("Logo generated successfully"));
+}
+
+#[test]
+fn test_verbose_letter_output() {
+    let temp_dir = tempdir().unwrap();
+    let output_path = temp_dir.path().join("letter-j.svg");
+
+    let mut cmd = Command::cargo_bin("hexalith").unwrap();
+    cmd.arg("--verbose")
+        .arg("--format")
+        .arg("svg")
+        .arg("--seed")
+        .arg("42")
+        .arg("--letter")
+        .arg("j")
+        .arg(output_path.to_str().unwrap());
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Mode: Emblem glyph"))
+        .stdout(predicate::str::contains("Letter: J"))
+        .stdout(predicate::str::contains("Grid size: 6"));
+}
+
+#[test]
+fn test_invalid_letter_rejected() {
+    let mut cmd = Command::cargo_bin("hexalith").unwrap();
+    cmd.arg("--letter").arg("9");
+
+    cmd.assert().failure().stderr(predicate::str::contains(
+        "letter must be a single character in A-Z",
+    ));
 }
 
 #[test]
@@ -288,6 +348,8 @@ fn test_all_options_combined() {
         .arg("12345")
         .arg("--theme")
         .arg("rainbow")
+        .arg("--letter")
+        .arg("M")
         .arg("--shapes")
         .arg("5")
         .arg("--grid-size")
@@ -308,11 +370,10 @@ fn test_all_options_combined() {
     cmd.assert()
         .success()
         .stdout(predicate::str::contains("Theme: rainbow"))
+        .stdout(predicate::str::contains("Letter: M"))
         .stdout(predicate::str::contains("Grid size: 6"))
         .stdout(predicate::str::contains("Shapes: 5"))
-        .stdout(predicate::str::contains(
-            "Symmetry: emblem (bilateral / triadic / restrained hex)",
-        ))
+        .stdout(predicate::str::contains("Symmetry: emblem glyph"))
         .stdout(predicate::str::contains("Opacity: 0.7"));
 
     assert!(output_path.exists());
@@ -413,4 +474,14 @@ fn test_classic_mode_ignores_shape_count() {
     cmd.assert().success();
 
     assert!(output_path.exists());
+}
+
+#[test]
+fn test_letter_is_not_available_in_classic_mode() {
+    let mut cmd = Command::cargo_bin("hexalith").unwrap();
+    cmd.arg("--classic").arg("--letter").arg("A");
+
+    cmd.assert().failure().stderr(predicate::str::contains(
+        "`--letter` is only available in modern emblem mode",
+    ));
 }

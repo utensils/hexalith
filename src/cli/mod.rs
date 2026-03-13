@@ -75,6 +75,10 @@ pub struct Cli {
     /// Use classic style generation with fixed triangle layout (2 overlapping shapes)
     #[arg(long)]
     pub classic: bool,
+
+    /// Shape the emblem around a specific letter (A-Z)
+    #[arg(long, value_parser = parse_letter)]
+    pub letter: Option<char>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum)]
@@ -104,6 +108,10 @@ impl std::fmt::Display for Format {
 pub fn run() -> Result<()> {
     let cli = Cli::parse();
 
+    if cli.classic && cli.letter.is_some() {
+        return Err("`--letter` is only available in modern emblem mode".into());
+    }
+
     // Process seed/UUID
     let seed = match &cli.uuid {
         Some(uuid) => Some(utils::uuid_to_seed(uuid)?),
@@ -113,7 +121,9 @@ pub fn run() -> Result<()> {
     // Set up the generator
     // For classic mode, default to grid size 2 to match original (24 triangles)
     let grid_size = if cli.classic && cli.grid_size == 4 {
-        2 // Default to 2 for classic mode to match original
+        2
+    } else if cli.letter.is_some() && cli.grid_size == 4 {
+        6
     } else {
         cli.grid_size
     };
@@ -123,7 +133,8 @@ pub fn run() -> Result<()> {
         .set_color_scheme(&cli.theme)
         .set_allow_overlap(cli.overlap)
         .set_unique_shapes(cli.unique_shapes)
-        .set_classic_mode(cli.classic);
+        .set_classic_mode(cli.classic)
+        .set_letter(cli.letter);
 
     // Generate the logo
     generator.generate()?;
@@ -199,6 +210,12 @@ pub fn run() -> Result<()> {
             if cli.classic {
                 println!("  Mode: Classic (24 fixed triangles)");
                 println!("  Shapes: 2 overlapping");
+            } else if let Some(letter) = generator.letter() {
+                println!("  Mode: Emblem glyph");
+                println!("  Letter: {letter}");
+                println!("  Grid size: {grid_size}");
+                println!("  Shapes: {}", cli.shapes);
+                println!("  Symmetry: emblem glyph");
             } else {
                 println!("  Grid size: {grid_size}");
                 println!("  Shapes: {}", cli.shapes);
@@ -230,4 +247,18 @@ pub fn run() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn parse_letter(value: &str) -> std::result::Result<char, String> {
+    let trimmed = value.trim();
+    if trimmed.len() != 1 {
+        return Err("letter must be a single character in A-Z".to_string());
+    }
+
+    let letter = trimmed.chars().next().unwrap().to_ascii_uppercase();
+    if !letter.is_ascii_uppercase() {
+        return Err("letter must be a single character in A-Z".to_string());
+    }
+
+    Ok(letter)
 }

@@ -24,7 +24,7 @@ The web frontend has been removed. The repo is intentionally focused on local CL
 
 ### With Nix
 
-The repo flake provides Rust `1.78.0`.
+The repo flake provides the current stable Rust toolchain via `rust-overlay`.
 
 ```bash
 nix develop -c cargo run -- --format svg output/logo.svg
@@ -41,6 +41,8 @@ nix run . -- --seed 42 --theme classic output/logo.png
 ```bash
 cargo run -- --format svg output/logo.svg
 ```
+
+The repo also includes [rust-toolchain.toml](/home/jamesbrink/Projects/utensils/hexalith/rust-toolchain.toml), so `cargo`/`rustup` will use the stable toolchain automatically outside Nix.
 
 ## CLI usage
 
@@ -97,6 +99,12 @@ Format:
 
 ```bash
 nix develop -c cargo fmt
+```
+
+Lint:
+
+```bash
+nix develop -c cargo clippy --all-targets --all-features
 ```
 
 ## Rendering quality notes

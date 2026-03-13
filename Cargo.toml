@@ -10,21 +10,21 @@ keywords = ["logo", "generator", "hexagon", "svg", "design"]
 categories = ["command-line-utilities", "graphics"]
 
 [dependencies]
-clap = { version = "4.4", features = ["derive"] }
-uuid = { version = "1.7", features = ["v4"] }
-rand = "0.8"
-svg = "0.14"
-rand_chacha = "0.3"
-tiny-skia = "0.11"
-resvg = "0.36"
-usvg = "0.36"
-arboard = "3.3"
-png = "0.17"
+clap = { version = "4.6.0", features = ["derive"] }
+uuid = { version = "1.22.0", features = ["v4"] }
+rand = "0.8.5"
+svg = "0.14.0"
+rand_chacha = "0.3.1"
+tiny-skia = "0.11.4"
+resvg = "0.36.0"
+usvg = "0.36.0"
+arboard = "3.6.1"
+png = "0.17.16"
 
 [dev-dependencies]
-assert_cmd = "2.0"
-predicates = "3.0"
-tempfile = "3.8"
+assert_cmd = "2.2.0"
+predicates = "3.1.4"
+tempfile = "3.27.0"
 
 [lib]
 name = "hexalith"

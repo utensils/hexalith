@@ -55,20 +55,8 @@ pub struct ShapeGenerator<'a> {
 
 impl<'a> ShapeGenerator<'a> {
     pub fn new(grid: &'a TriangularGrid, seed: Option<u64>) -> Self {
-        // Add extra randomness by combining seed with timestamp nanoseconds
         let rng = match seed {
-            Some(seed) => {
-                // Get the current timestamp's nanoseconds
-                let now = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .subsec_nanos();
-
-                // Combine seed and timestamp for additional randomness
-                // But only use a portion of the nanoseconds to keep some seed determinism
-                let combined_seed = seed.wrapping_add((now % 10000) as u64);
-                ChaCha8Rng::seed_from_u64(combined_seed)
-            }
+            Some(seed) => ChaCha8Rng::seed_from_u64(seed),
             None => ChaCha8Rng::from_entropy(),
         };
 

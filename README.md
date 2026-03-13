@@ -15,6 +15,7 @@ The web frontend has been removed. The repo is intentionally focused on local CL
 
 - Random or seeded logo generation
 - SVG or PNG output
+- Symmetry-first modern mode with six-way rotational composition by default
 - Classic mode with a fixed 24-triangle layout
 - Multiple color themes: `classic`, `google`, `blues`, `greens`, `reds`, `purples`, `rainbow`
 - Clipboard copy support
@@ -65,6 +66,9 @@ cargo run -- --classic --theme google output/classic-google.png
 # Denser grid and more shapes
 cargo run -- --grid-size 6 --shapes 5 --opacity 0.7 output/variant.png
 
+# Symmetry-first modern default
+cargo run -- --seed 4242 --theme blues output/symmetric-mark.png
+
 # Copy SVG to clipboard instead of writing a file
 cargo run -- --copy --format svg
 ```
@@ -107,14 +111,6 @@ Lint:
 nix develop -c cargo clippy --all-targets --all-features
 ```
 
-## Rendering quality notes
+## Rendering notes
 
-The generator is functional, but the current logos still look weak for a few structural reasons:
-
-- Shape growth is mostly cell-based randomness, so silhouettes often feel blob-like instead of intentional.
-- Color selection is broad, but composition logic does little to create hierarchy, focal points, or balance.
-- SVG output traces raw triangle-region boundaries, which preserves geometry but not elegance.
-- Overlap helps variety, but it also creates muddy intersections and accidental dead space.
-- Seeded output is deterministic now, but determinism alone does not improve composition quality.
-
-The next useful improvements are better silhouette constraints, stronger composition scoring, deterministic seeded output, and clearer palette/contrast rules before any UI work returns.
+Modern mode now builds logos from full rotational orbits of triangular cells. That gives the default output strong six-way symmetry, cleaner radial balance, and deterministic seeded layouts without introducing a large flag surface.

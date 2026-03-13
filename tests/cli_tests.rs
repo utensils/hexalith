@@ -59,21 +59,27 @@ fn test_png_output() {
 #[test]
 fn test_deterministic_output() {
     let temp_dir = tempdir().unwrap();
-    let output_path = temp_dir.path().join("logo.png");
+    let output_path_a = temp_dir.path().join("logo-a.png");
+    let output_path_b = temp_dir.path().join("logo-b.png");
 
-    // Generate logo with seed (overlap will be true by default)
     let mut cmd = Command::cargo_bin("hexalith").unwrap();
     cmd.arg("--seed")
         .arg("12345")
-        .arg(output_path.to_str().unwrap());
+        .arg(output_path_a.to_str().unwrap());
     cmd.assert().success();
 
-    // Check the output file
-    let content = fs::read(&output_path).unwrap();
+    let mut cmd = Command::cargo_bin("hexalith").unwrap();
+    cmd.arg("--seed")
+        .arg("12345")
+        .arg(output_path_b.to_str().unwrap());
+    cmd.assert().success();
 
-    // Should be a valid PNG file
+    let content = fs::read(&output_path_a).unwrap();
+    let content_b = fs::read(&output_path_b).unwrap();
+
     assert!(!content.is_empty());
     assert_eq!(&content[0..8], &[137, 80, 78, 71, 13, 10, 26, 10]);
+    assert_eq!(content, content_b);
 }
 
 #[test]
@@ -303,6 +309,9 @@ fn test_all_options_combined() {
         .stdout(predicate::str::contains("Theme: rainbow"))
         .stdout(predicate::str::contains("Grid size: 6"))
         .stdout(predicate::str::contains("Shapes: 5"))
+        .stdout(predicate::str::contains(
+            "Symmetry: radial rotational (6-way)",
+        ))
         .stdout(predicate::str::contains("Opacity: 0.7"));
 
     assert!(output_path.exists());

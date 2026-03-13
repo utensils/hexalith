@@ -15,7 +15,9 @@ fi
 
 "${RUNNER[@]}" -- --format svg --seed 42 --theme classic "$OUT_DIR/classic-seed-42.svg"
 "${RUNNER[@]}" -- --format png --seed 42 --theme classic "$OUT_DIR/classic-seed-42.png"
-"${RUNNER[@]}" -- --format svg --seed 2024 --theme google --classic "$OUT_DIR/google-classic-seed-2024.svg"
-"${RUNNER[@]}" -- --format png --seed 2024 --theme google --classic "$OUT_DIR/google-classic-seed-2024.png"
-"${RUNNER[@]}" -- --format svg --seed 777 --theme rainbow --grid-size 6 --shapes 5 "$OUT_DIR/rainbow-grid6-seed-777.svg"
-"${RUNNER[@]}" -- --format png --seed 777 --theme rainbow --grid-size 6 --shapes 5 "$OUT_DIR/rainbow-grid6-seed-777.png"
+"${RUNNER[@]}" -- --format svg --seed 31415 --theme classic "$OUT_DIR/symmetric-classic-seed-31415.svg"
+"${RUNNER[@]}" -- --format png --seed 31415 --theme classic "$OUT_DIR/symmetric-classic-seed-31415.png"
+"${RUNNER[@]}" -- --format svg --seed 27182 --theme google --grid-size 5 --shapes 4 "$OUT_DIR/symmetric-google-seed-27182.svg"
+"${RUNNER[@]}" -- --format png --seed 27182 --theme google --grid-size 5 --shapes 4 "$OUT_DIR/symmetric-google-seed-27182.png"
+"${RUNNER[@]}" -- --format svg --seed 16180 --theme rainbow --grid-size 6 --shapes 5 "$OUT_DIR/symmetric-rainbow-seed-16180.svg"
+"${RUNNER[@]}" -- --format png --seed 16180 --theme rainbow --grid-size 6 --shapes 5 "$OUT_DIR/symmetric-rainbow-seed-16180.png"

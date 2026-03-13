@@ -1,5 +1,5 @@
 use crate::clipboard;
-use crate::generator::Generator;
+use crate::generator::{Generator, SymmetryMode};
 use crate::png;
 use crate::svg;
 use crate::utils;
@@ -202,6 +202,13 @@ pub fn run() -> Result<()> {
             } else {
                 println!("  Grid size: {grid_size}");
                 println!("  Shapes: {}", cli.shapes);
+                println!(
+                    "  Symmetry: {}",
+                    match generator.symmetry_mode() {
+                        SymmetryMode::None => "none",
+                        SymmetryMode::Rotational6 => "radial rotational (6-way)",
+                    }
+                );
             }
             println!("  Opacity: {}", cli.opacity);
             println!(
